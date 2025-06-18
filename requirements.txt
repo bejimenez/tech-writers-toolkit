@@ -1,0 +1,51 @@
+# Core Framework
+flet>=0.21.2
+python-dotenv>=1.0.0
+
+# AI and ML
+crewai>=0.41.1
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-google-genai>=1.0.0
+openai>=1.0.0
+google-generativeai>=0.3.0
+
+# Document Processing
+PyMuPDF>=1.23.0
+pdf2image>=3.1.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Database and Storage
+chromadb>=0.4.0
+sqlite3-backup>=0.1.0
+
+# Security
+cryptography>=41.0.0
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
+
+# Logging and Monitoring
+structlog>=23.2.0
+sentry-sdk>=1.38.0
+rich>=13.7.0
+python-json-logger>=2.0.0
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.4.0
+mkdocstrings[python]>=0.24.0
+mkdocs-mermaid2-plugin>=1.1.0
+mkdocs-video>=1.5.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0
+
+# Development
+black>=23.0.0
+flake8>=6.1.0
+mypy>=1.7.0
+pre-commit>=3.5.0
