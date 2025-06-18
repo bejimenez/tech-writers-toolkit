@@ -15,7 +15,7 @@ class TechnicalWritingApp(LoggerMixin):
     """Main application class for the Technical Writing Assistant UI"""
 
     def __init__(self):
-        self.current_view: "home"
+        self.current_view = "home"
         self.views: Dict[str, Any] = {}
         self.page = None
         self.authenticated = False
@@ -24,26 +24,24 @@ class TechnicalWritingApp(LoggerMixin):
     def main(self, page: ft.Page):
         """Main entry point for the Flet application"""
         self.page = page
-        self._setup_page()
-        self._initialize_views()
-        self._setup_navigation()
-        self._show_initial_view()
-
-        self.logger.info("Technical Writing Assistant started successfully", view=self.current_view)
+        if self.page:
+            self._setup_page()
+            self._initialize_views()
+            self._setup_navigation()
+            self._show_initial_view()
+            self.logger.info("Technical Writing Assistant started successfully", view=self.current_view)
 
     def _setup_page(self):
         """Configure the main page properties"""
+        if not self.page:
+            return
         self.page.title = Config.APP_NAME
         self.page.theme_mode = ft.ThemeMode.LIGHT
-        self.page.window_width = 1200
-        self.page.window_height = 800
-        self.page.window_min_width = 800
-        self.page.window_min_height = 600
         self.page.padding = 0
 
         # Set up theme
         self.page.theme = ft.Theme(
-            color_scheme_seed=ft.colors.INDIGO,
+            color_scheme_seed="indigo",
             use_material3=True
         )
 
@@ -58,6 +56,8 @@ class TechnicalWritingApp(LoggerMixin):
 
     def _setup_navigation(self):
         """Set up navigation and routing between views"""
+        if not self.page:
+            return
         def on_route_change(route):
             self.logger.info("Route changed", route=route.route)
             self.navigate_to(route.route.strip("/"))
@@ -72,22 +72,21 @@ class TechnicalWritingApp(LoggerMixin):
             self.navigate_to("login")
 
     def navigate_to(self, view_name: str):
-        """naviget to a specific view"""
+        """Navigate to a specific view"""
         if view_name not in self.views:
             self.logger.warning("Unknown view", view=view_name)
             view_name = "home"
-        
         self.current_view = view_name
-        self.page.controls.clear()
-
+        if not self.page:
+            return
+        # Remove controls.clear(), just replace content
+        self.page.views.clear() if hasattr(self.page, 'views') else None
         # Add the requested view
         view_instance = self.views[view_name]
-        self.page.add(view_instance.build())
-
+        self.page.controls = [view_instance.build()]
         # Update the page route
         self.page.route = f"/{view_name}"
         self.page.update()
-
         self.logger.info("Navigated to view", view=view_name)
 
     def authenticate_user(self, username: str, password: str) -> bool:

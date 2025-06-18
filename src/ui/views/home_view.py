@@ -22,18 +22,18 @@ class HomeView:
             label_type=ft.NavigationRailLabelType.ALL,
             destinations=[
                 ft.NavigationRailDestination(
-                    icon=ft.icons.HOME,
-                    selected_icon=ft.icons.HOME,
+                    icon="home",
+                    selected_icon="home",
                     label="Home",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.icons.REVIEW,
-                    selected_icon=ft.icons.REVIEW,
+                    icon="reviews",
+                    selected_icon="reviews",
                     label="Review",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.icons.SETTINGS,
-                    selected_icon=ft.icons.SETTINGS,
+                    icon="settings",
+                    selected_icon="settings",
                     label="Settings",
                 ),
             ],
@@ -68,7 +68,7 @@ class HomeView:
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                         ),
                         padding=ft.padding.all(20),
-                        bgcolor=ft.colors.SURFACE_VARIANT,
+                        bgcolor="surface_variant",
                     ),
 
                     # Dashboard content
@@ -106,10 +106,10 @@ class HomeView:
                                 ft.ElevatedButton(
                                     content=ft.Column(
                                         [
-                                            ft.Icon(ft.icons.UPLOAD_FILE, size=32),
+                                            ft.Icon(name="upload_file", size=32),
                                             ft.Text("Review Document")
                                         ],
-                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                         spacing=5
                                     ),
                                     width=150,
@@ -119,7 +119,7 @@ class HomeView:
                                 ft.ElevatedButton(
                                     content=ft.Column(
                                         [
-                                            ft.Icon(ft.icons.HISTORY, size=32),
+                                            ft.Icon(name="history", size=32),
                                             ft.Text("Recent Reviews")
                                         ],
                                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -132,7 +132,7 @@ class HomeView:
                                 ft.ElevatedButton(
                                     content=ft.Column(
                                         [
-                                            ft.Icon(ft.icons.SETTINGS, size=32),
+                                            ft.Icon(name="settings", size=32),
                                             ft.Text("Settings")
                                         ],
                                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -164,19 +164,19 @@ class HomeView:
                         ),
                         ft.Row(
                             [
-                                ft.Icon(ft.icons.CHECK_CIRCLE, color=ft.colors.GREEN),
+                                ft.Icon(name="check_circle", color="green"),
                                 ft.Text("Document Processing: Ready")
                             ]
                         ),
                         ft.Row(
                             [
-                                ft.Icon(ft.icons.CHECK_CIRCLE, color=ft.colors.GREEN),
+                                ft.Icon(name="check_circle", color="green"),
                                 ft.Text("AI Services: Connected")
                             ]
                         ),
                         ft.Row(
                             [
-                                ft.Icon(ft.icons.CHECK_CIRCLE, color=ft.colors.GREEN),
+                                ft.Icon(name="check_circle", color="green"),
                                 ft.Text("Database: Online")
                             ]
                         ),
@@ -218,16 +218,16 @@ class HomeView:
             title=ft.Text("Recent Reviews"),
             content=ft.Text("No recent reviews found."),
             actions=[
-                ft.TextButton("Close", on_click=lambda _: self._close_dialog())
+                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
             ]
         )
-        
-        self.app.page.dialog = dialog
         dialog.open = True
-        self.app.page.update()
-    
-    def _close_dialog(self):
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+
+    def _close_dialog(self, dialog):
         """Close any open dialog"""
-        if self.app.page.dialog:
-            self.app.page.dialog.open = False
+        dialog.open = False
+        if self.app.page:
             self.app.page.update()

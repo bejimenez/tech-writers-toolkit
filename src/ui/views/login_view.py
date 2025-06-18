@@ -37,7 +37,7 @@ class LoginView:
 
         self.error_text = ft.Text(
             "",
-            color=ft.colors.ERROR,
+            color="error",
             size=14
         )
 
@@ -53,7 +53,7 @@ class LoginView:
                 [
                     ft.Container(height=100), # Spacer for top margin
                     ft.Text(
-                        self.app.page.title,
+                        self.app.page.title if self.app.page else "Technical Writing Assistant",
                         size=32,
                         weight=ft.FontWeight.BOLD,
                         text_align=ft.TextAlign.CENTER
@@ -71,7 +71,7 @@ class LoginView:
                                     ),
                                     ft.Container(height=20),
                                     self.username_field,
-                                    self.password_field
+                                    self.password_field,
                                     self.error_text,
                                     ft.Container(height=20),
                                     login_button
@@ -88,21 +88,25 @@ class LoginView:
                 spacing=0
             ),
             expand=True,
-            alighnment=ft.Alignment.center
+            alignment=ft.alignment.center
         )
     
     def _on_login_click(self, e):
         """Handle login button click"""
-        username = self.username_field.value
-        password = self.password_field.value
+        username = self.username_field.value if self.username_field else ""
+        password = self.password_field.value if self.password_field else ""
 
         if not username or not password:
-            self.error_text.value = "Username and password cannot be empty."
-            self.app.page.update()
+            if self.error_text:
+                self.error_text.value = "Username and password cannot be empty."
+            if self.app.page:
+                self.app.page.update()
             return
         
         if self.app.authenticate_user(username, password):
             self.app.navigate_to("home")
         else:
-            self.error_text.value = "Invalid username or password."
-            self.app.page.update()
+            if self.error_text:
+                self.error_text.value = "Invalid username or password."
+            if self.app.page:
+                self.app.page.update()
