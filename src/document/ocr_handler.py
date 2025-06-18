@@ -3,7 +3,7 @@
 
 import time
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 try:
     import pytesseract
     from pdf2image import convert_from_path
@@ -239,7 +239,7 @@ class OCRHandler(LoggerMixin):
         """Get list of supported file formats for OCR"""
         return ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
     
-    def configure_tesseract(self, tesseract_path: str = None):
+    def configure_tesseract(self, tesseract_path: Optional[str] = None):
         """
         Configure Tesseract executable path if needed
         
