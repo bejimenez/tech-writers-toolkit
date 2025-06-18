@@ -140,7 +140,7 @@ class ReviewView(LoggerMixin):
                                     size=20,
                                     weight=ft.FontWeight.BOLD
                                 ),
-                                self.file_uploader,
+                                self.file_uploader.build(),
                                 self.progress_bar,
                                 self.status_text,
                             ],

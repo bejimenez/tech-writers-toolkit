@@ -5,7 +5,7 @@ import flet as ft
 from pathlib import Path
 from typing import Callable, Optional, List
 
-class FileUploader(ft.Control):
+class FileUploader:
     """File upload component with drag-and-drop support"""
     
     def __init__(
@@ -14,22 +14,20 @@ class FileUploader(ft.Control):
         accepted_extensions: Optional[List[str]] = None,
         max_file_size_mb: int = 50
     ):
-        super().__init__()
         self.on_file_selected = on_file_selected
         self.accepted_extensions = accepted_extensions or ['.pdf', '.txt', '.docx']
         self.max_file_size_mb = max_file_size_mb
         self.selected_file = None
+        self.file_picker = ft.FilePicker(
+            on_result=self._on_file_picker_result
+        )
+        self._upload_area = None
     
     def build(self):
         """Build the file uploader component"""
         
-        # File picker
-        self.file_picker = ft.FilePicker(
-            on_result=self._on_file_picker_result
-        )
-        
         # Upload area
-        upload_area = ft.Container(
+        self._upload_area = ft.Container(
             content=ft.Column(
                 [
                     ft.Icon(name="cloud_upload", size=48, color="primary"),
@@ -65,7 +63,7 @@ class FileUploader(ft.Control):
         return ft.Column(
             [
                 self.file_picker,
-                upload_area
+                self._upload_area
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
