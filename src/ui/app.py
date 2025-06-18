@@ -79,11 +79,14 @@ class TechnicalWritingApp(LoggerMixin):
         self.current_view = view_name
         if not self.page:
             return
-        # Remove controls.clear(), just replace content
-        self.page.views.clear() if hasattr(self.page, 'views') else None
+        
+        # Clear existing controls
+        self.page.clean()
+        
         # Add the requested view
         view_instance = self.views[view_name]
-        self.page.controls = [view_instance.build()]
+        self.page.add(view_instance.build())
+        
         # Update the page route
         self.page.route = f"/{view_name}"
         self.page.update()
