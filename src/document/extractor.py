@@ -23,7 +23,7 @@ class ContentExtractor(LoggerMixin):
         Returns:
             ProcessedContent with extracted text and metadata
         """
-        from .processor import ProcessedContent
+        from src.document.processor import ProcessedContent
         
         start_time = time.time()
         

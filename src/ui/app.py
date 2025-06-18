@@ -6,10 +6,10 @@ from typing import Dict, Any
 
 from utils.config import Config
 from utils.logger import LoggerMixin
-from .views.home_view import HomeView
-from .views.login_view import LoginView
-from .views.review_view import ReviewView
-from .views.settings_view import SettingsView
+from src.ui.views.home_view import HomeView
+from src.ui.views.login_view import LoginView
+from src.ui.views.review_view import ReviewView
+from src.ui.views.settings_view import SettingsView
 
 class TechnicalWritingApp(LoggerMixin):
     """Main application class for the Technical Writing Assistant UI"""

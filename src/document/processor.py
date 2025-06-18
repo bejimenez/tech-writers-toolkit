@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 from utils.logger import LoggerMixin
 from utils.decorators import log_execution_time, handle_exceptions
-from .extractor import ContentExtractor
-from .ocr_handler import OCRHandler
+from src.document.extractor import ContentExtractor
+from src.document.ocr_handler import OCRHandler
 
 @dataclass
 class DocumentInfo:

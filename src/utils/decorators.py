@@ -4,7 +4,7 @@
 import time
 import functools
 from typing import Callable, Any, Optional
-from .logger import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -11,7 +11,7 @@ from datetime import datetime
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .config import Config
+from src.utils.config import Config
 
 # Initialize Rich console for pretty logging
 console = Console()
