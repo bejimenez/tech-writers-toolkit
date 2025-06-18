@@ -54,7 +54,7 @@ class ContentExtractor(LoggerMixin):
             page = doc[page_num]
             
             # Extract text
-            text = page.get_text()
+            text = page.get_text("text") # type: ignore
             pages.append(text)
             
             # Extract images
@@ -117,7 +117,7 @@ class ContentExtractor(LoggerMixin):
         
         try:
             # Look for table-like structures in the text
-            text = page.get_text()
+            text = page.get_text("text")
             lines = text.split('\n')
             
             current_table = []
