@@ -26,7 +26,7 @@ def main():
         print("Configuration errors:")
         for error in config_errors:
             print(f"- {error}")
-        print("\Please check the .env file and fix the errors before running the application.")
+        print("Please check the .env file and fix the errors before running the application.")
         return
     
     # Create necessary directories

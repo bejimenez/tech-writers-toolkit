@@ -12,8 +12,7 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
-from ..utils.logger import LoggerMixin
-from .processor import ProcessedContent, DocumentInfo
+from utils.logger import LoggerMixin
 
 class OCRHandler(LoggerMixin):
     """Handle OCR processing for scanned documents"""
@@ -25,8 +24,8 @@ class OCRHandler(LoggerMixin):
             )
     
     def process_with_ocr(
-        self, file_path: Path, doc_info: DocumentInfo
-    ) -> ProcessedContent:
+        self, file_path: Path, doc_info
+    ):
         """
         Process document using OCR
         
@@ -37,6 +36,9 @@ class OCRHandler(LoggerMixin):
         Returns:
             ProcessedContent with OCR-extracted text
         """
+        # Local import to avoid circular dependency
+        from .processor import ProcessedContent
+        
         if not OCR_AVAILABLE:
             return self._create_empty_content(doc_info, "OCR libraries not available")
         
@@ -78,9 +80,11 @@ class OCRHandler(LoggerMixin):
             )
     
     def _process_pdf_with_ocr(
-        self, file_path: Path, doc_info: DocumentInfo
-    ) -> ProcessedContent:
+        self, file_path: Path, doc_info
+    ):
         """Process PDF using OCR"""
+        
+        from .processor import ProcessedContent
         
         self.logger.info("Starting PDF OCR processing", filename=file_path.name)
         
@@ -130,9 +134,11 @@ class OCRHandler(LoggerMixin):
         )
     
     def _process_image_with_ocr(
-        self, file_path: Path, doc_info: DocumentInfo
-    ) -> ProcessedContent:
+        self, file_path: Path, doc_info
+    ):
         """Process a single image file using OCR"""
+        
+        from .processor import ProcessedContent
         
         self.logger.info("Starting image OCR processing", filename=file_path.name)
         
@@ -215,10 +221,10 @@ class OCRHandler(LoggerMixin):
         
         return tables
     
-    def _create_empty_content(
-        self, doc_info: DocumentInfo, reason: str
-    ) -> ProcessedContent:
+    def _create_empty_content(self, doc_info, reason):
         """Create empty content with error message"""
+        
+        from .processor import ProcessedContent
         
         self.logger.warning("Creating empty content", reason=reason)
         

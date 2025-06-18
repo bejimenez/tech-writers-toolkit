@@ -3,10 +3,10 @@
 
 import flet as ft
 from typing import TYPE_CHECKING
-from ...utils.config import Config
+from utils.config import Config
 
 if TYPE_CHECKING:
-    from ..app import TechnicalWritingApp
+    from ui.app import TechnicalWritingApp
 
 class SettingsView:
     """Settings view component"""

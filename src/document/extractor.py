@@ -5,15 +5,14 @@ import time
 from pathlib import Path
 from typing import List, Dict
 
-from ..utils.logger import LoggerMixin
-from .processor import ProcessedContent, DocumentInfo
+from utils.logger import LoggerMixin
 
 class ContentExtractor(LoggerMixin):
     """Extract content from documents with readable text"""
     
     def extract_content(
-        self, file_path: Path, doc_info: DocumentInfo
-    ) -> ProcessedContent:
+        self, file_path: Path, doc_info
+    ):
         """
         Extract content from a document
         
@@ -24,6 +23,8 @@ class ContentExtractor(LoggerMixin):
         Returns:
             ProcessedContent with extracted text and metadata
         """
+        from .processor import ProcessedContent
+        
         start_time = time.time()
         
         if file_path.suffix.lower() == '.pdf':
@@ -39,8 +40,10 @@ class ContentExtractor(LoggerMixin):
         return content
     
     def _extract_pdf_content(
-        self, file_path: Path, doc_info: DocumentInfo
-    ) -> ProcessedContent:
+        self, file_path: Path, doc_info
+    ):
+        from .processor import ProcessedContent
+        
         """Extract content from PDF using PyMuPDF"""
         
         doc = fitz.open(file_path)
@@ -92,8 +95,10 @@ class ContentExtractor(LoggerMixin):
         )
     
     def _extract_text_content(
-        self, file_path: Path, doc_info: DocumentInfo
-    ) -> ProcessedContent:
+        self, file_path: Path, doc_info
+    ):
+        from .processor import ProcessedContent
+        
         """Extract content from plain text file"""
         
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:

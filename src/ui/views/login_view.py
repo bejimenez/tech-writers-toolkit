@@ -5,7 +5,7 @@ import flet as ft
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..app import TechnicalWritingApp
+    from ui.app import TechnicalWritingApp
 
 class LoginView:
     """Login view for user authentication"""

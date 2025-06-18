@@ -4,8 +4,8 @@
 import flet as ft
 from typing import Dict, Any
 
-from ..utils.config import Config
-from ..utils.logger import LoggerMixin
+from utils.config import Config
+from utils.logger import LoggerMixin
 from .views.home_view import HomeView
 from .views.login_view import LoginView
 from .views.review_view import ReviewView

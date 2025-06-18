@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-from ..utils.logger import LoggerMixin
-from ..utils.decorators import log_execution_time, handle_exceptions
+from utils.logger import LoggerMixin
+from utils.decorators import log_execution_time, handle_exceptions
 from .extractor import ContentExtractor
 from .ocr_handler import OCRHandler
 

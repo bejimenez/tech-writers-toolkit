@@ -2,12 +2,12 @@
 import flet as ft
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
-from ..components.file_uploader import FileUploader
-from ...document.processor import DocumentProcessor
-from ...utils.logger import LoggerMixin
+from ui.components.file_uploader import FileUploader
+from document.processor import DocumentProcessor
+from utils.logger import LoggerMixin
 
 if TYPE_CHECKING:
-    from ..app import TechnicalWritingApp
+    from ui.app import TechnicalWritingApp
 
 class ReviewView(LoggerMixin):
     """Review view for document processing and analysis"""
