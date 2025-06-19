@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import List, Dict
 
-from utils.logger import LoggerMixin
+from src.utils.logger import LoggerMixin
 
 class ContentExtractor(LoggerMixin):
     """Extract content from documents with readable text"""
@@ -23,7 +23,7 @@ class ContentExtractor(LoggerMixin):
         Returns:
             ProcessedContent with extracted text and metadata
         """
-        from src.document.processor import ProcessedContent
+        from .processor import ProcessedContent
         
         start_time = time.time()
         

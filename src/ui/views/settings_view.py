@@ -3,7 +3,7 @@
 
 import flet as ft
 from typing import TYPE_CHECKING
-from utils.config import Config
+from src.utils.config import Config
 
 if TYPE_CHECKING:
     from ui.app import TechnicalWritingApp

@@ -2,7 +2,11 @@
 flet>=0.21.2
 python-dotenv>=1.0.0
 
-# AI and ML
+# HTTP Requests for Mistral API
+httpx>=0.25.0
+requests>=2.31.0
+
+# AI and ML (for Phase 2)
 crewai>=0.41.1
 langchain>=0.1.0
 langchain-openai>=0.1.0
@@ -12,8 +16,6 @@ google-generativeai>=0.3.0
 
 # Document Processing
 PyMuPDF>=1.23.0
-pdf2image>=3.1.0
-pytesseract>=0.3.10
 Pillow>=10.0.0
 
 # Database and Storage

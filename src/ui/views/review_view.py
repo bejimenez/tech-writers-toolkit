@@ -2,9 +2,9 @@
 import flet as ft
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
-from ui.components.file_uploader import FileUploader
-from document.processor import DocumentProcessor
-from utils.logger import LoggerMixin
+from src.ui.components.file_uploader import FileUploader
+from src.document.processor import DocumentProcessor
+from src.utils.logger import LoggerMixin
 
 if TYPE_CHECKING:
     from ui.app import TechnicalWritingApp

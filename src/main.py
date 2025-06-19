@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 
 # Add src directory to sys.path for module imports
-sys.path.insert(9, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.config import Config
-from utils.logger import setup_logging, get_logger
-from ui.app import TechnicalWritingApp
+from src.utils.config import Config
+from src.utils.logger import setup_logging, get_logger
+from src.ui.app import TechnicalWritingApp
 
 def main():
     """Main function to start the application"""

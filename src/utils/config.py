@@ -18,11 +18,21 @@ class Config:
     APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
-    # API Configuration
+    # API Configuration (Phase 1)
+    MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+    MISTRAL_BASE_URL = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
+    MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "pixtral-12b-2409")
+
+    # API Configuration (Phase 2, not implemented yet)
     GROK_API_KEY = os.getenv("GROK_API_KEY")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "grok")
     FALLBACK_PROVIDER = os.getenv("FALLBACK_PROVIDER", "gemini")
+
+     # OCR Settings
+    OCR_MAX_IMAGE_SIZE = int(os.getenv("OCR_MAX_IMAGE_SIZE", "2048"))  # Max width/height in pixels
+    OCR_DPI = int(os.getenv("OCR_DPI", "300"))  # DPI for PDF to image conversion
+    OCR_TIMEOUT = int(os.getenv("OCR_TIMEOUT", "30"))  # Request timeout in seconds
 
     # Model Settings
     MAX_TOKENS_PER_REQUEST = int(os.getenv("MAX_TOKENS_PER_REQUEST", "2000"))
@@ -58,6 +68,9 @@ class Config:
         """Validate configuration and return list of errors"""
         errors = []
 
+        if not cls.MISTRAL_API_KEY:
+            errors.append("MISTRAL_API_KEY must be provided.")
+
         if not cls.GROK_API_KEY and not cls.GEMINI_API_KEY:
             errors.append("At least one API key (Grok or Gemini) must be provided.")
 
@@ -69,6 +82,9 @@ class Config:
 
         if cls.LOG_FORMAT not in ["console", "json"]:
             errors.append("LOG_FORMAT must be either 'console' or 'json'.")
+
+        if cls.OCR_DPI < 150 or cls.OCR_DPI > 600:
+            errors.append("OCR_DPI must be between 150 and 600 for optimal results.")
 
         return errors
     

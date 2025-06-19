@@ -1,49 +1,43 @@
 # src/document/ocr_handler.py
-"""OCR processing for scanned documents"""
+"""Mistral OCR processing for scanned documents"""
 
 import time
-import os
+import base64
+import io
 from pathlib import Path
-from typing import List
-try:
-    import pytesseract
-    from pdf2image import convert_from_path
-    from PIL import Image
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
+from typing import List, Dict, Any
+import httpx
+import fitz  # PyMuPDF
+from PIL import Image
 
 from src.utils.logger import LoggerMixin
+from src.utils.config import Config
+from src.utils.decorators import log_execution_time, log_api_call
+from src.document.processor import ProcessedContent
 
 class OCRHandler(LoggerMixin):
-    """Handle OCR processing for scanned documents"""
+    """Handle OCR processing using Mistral Vision API"""
     
     def __init__(self):
-        if not OCR_AVAILABLE:
-            self.logger.warning(
-                "OCR libraries not available. Install pytesseract and pdf2image for OCR support."
-            )
-        else:
-            # Configure Tesseract path if needed
-            tesseract_path = r"C:\Users\brijim\OneDrive - ASSA ABLOY Group\Documents\tesseractOCR\tesseract.exe"
-            if os.path.exists(tesseract_path):
-                pytesseract.pytesseract.tesseract_cmd = tesseract_path
-                self.logger.info("Tesseract path configured", path=tesseract_path)
-            
-            # Configure Poppler path if needed
-            poppler_path = r"C:\Users\brijim\OneDrive - ASSA ABLOY Group\Documents\poppler\Library\bin"
-            if os.path.exists(poppler_path):
-                # Add to PATH for this session
-                current_path = os.environ.get('PATH', '')
-                if poppler_path not in current_path:
-                    os.environ['PATH'] = f"{poppler_path};{current_path}"
-                    self.logger.info("Poppler path configured", path=poppler_path)
+        if not Config.MISTRAL_API_KEY:
+            self.logger.error("Mistral API key not configured")
+            raise ValueError("MISTRAL_API_KEY is required for OCR functionality")
+        
+        self.client = httpx.Client(
+            base_url=Config.MISTRAL_BASE_URL,
+            headers={
+                "Authorization": f"Bearer {Config.MISTRAL_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            timeout=Config.OCR_TIMEOUT
+        )
+        
+        self.logger.info("Mistral OCR handler initialized", model=Config.MISTRAL_MODEL)
     
-    def process_with_ocr(
-        self, file_path: Path, doc_info
-    ):
+    @log_execution_time
+    def process_with_ocr(self, file_path: Path, doc_info) -> ProcessedContent:
         """
-        Process document using OCR
+        Process document using Mistral OCR
         
         Args:
             file_path: Path to the document
@@ -52,71 +46,79 @@ class OCRHandler(LoggerMixin):
         Returns:
             ProcessedContent with OCR-extracted text
         """
-        if not OCR_AVAILABLE:
-            return self._create_empty_content(doc_info, "OCR libraries not available")
-        
         start_time = time.time()
         
         try:
             if file_path.suffix.lower() == '.pdf':
-                content = self._process_pdf_with_ocr(file_path, doc_info)
+                content = self._process_pdf_with_mistral(file_path, doc_info)
             else:
                 return self._create_empty_content(doc_info, "OCR only supports PDF files")
             
             processing_time = time.time() - start_time
             content.processing_time = processing_time
             
+            self.logger.info(
+                "OCR processing completed",
+                filename=file_path.name,
+                pages=len(content.pages),
+                text_length=len(content.text),
+                processing_time=f"{processing_time:.2f}s"
+            )
+            
             return content
             
         except Exception as e:
-            self.logger.error("OCR processing failed", error=str(e))
+            self.logger.error("Mistral OCR processing failed", error=str(e))
             return self._create_empty_content(doc_info, f"OCR failed: {str(e)}")
     
-    def _process_pdf_with_ocr(
-        self, file_path: Path, doc_info
-    ):
-        """Process PDF using OCR"""
+    def _process_pdf_with_mistral(self, file_path: Path, doc_info) -> ProcessedContent:
+        """Process PDF using Mistral Vision API"""
         
-        from src.document.processor import ProcessedContent
+        self.logger.info("Starting Mistral OCR processing", filename=file_path.name)
         
-        self.logger.info("Starting OCR processing", filename=file_path.name)
-        
-        # Convert PDF to images with specific poppler path if configured
-        try:
-            # Try with poppler_path parameter first
-            poppler_path = r"C:\Users\brijim\OneDrive - ASSA ABLOY Group\Documents\poppler\Library\bin"
-            if os.path.exists(poppler_path):
-                pages = convert_from_path(str(file_path), poppler_path=poppler_path, dpi=300)
-            else:
-                # Fall back to system PATH
-                pages = convert_from_path(str(file_path), dpi=300)
-            
-            self.logger.info(f"Converted PDF to {len(pages)} images")
-            
-        except Exception as e:
-            self.logger.error("Failed to convert PDF to images", error=str(e))
-            raise
-        
+        # Open PDF and convert pages to images
+        doc = fitz.open(file_path)
         page_texts = []
         images = []
         
-        for i, page in enumerate(pages):
-            self.logger.info(f"Processing page {i + 1}/{len(pages)} with OCR")
-            
-            try:
-                # Perform OCR on the page
-                text = pytesseract.image_to_string(page, lang='eng')
-                page_texts.append(text)
+        try:
+            for page_num in range(len(doc)):
+                self.logger.info(f"Processing page {page_num + 1}/{len(doc)} with Mistral OCR")
                 
-                # Save page as image bytes
-                import io
-                img_bytes = io.BytesIO()
-                page.save(img_bytes, format='PNG')
-                images.append(img_bytes.getvalue())
+                page = doc[page_num]
                 
-            except Exception as e:
-                self.logger.warning(f"OCR failed for page {i + 1}", error=str(e))
-                page_texts.append("")
+                # Convert page to image
+                mat = fitz.Matrix(Config.OCR_DPI / 72, Config.OCR_DPI / 72)
+                # Use get_pixmap for PyMuPDF >= 1.18.0, but ensure the page is a fitz.Page
+                if hasattr(page, 'get_pixmap'):
+                    pix = page.get_pixmap(matrix=mat)  # type: ignore[attr-defined]
+                else:
+                    raise RuntimeError('fitz.Page object does not have get_pixmap method. PyMuPDF version may be incompatible.')
+                
+                img_data = pix.tobytes("png")
+                
+                # Resize image if too large
+                img = Image.open(io.BytesIO(img_data))
+                img = self._resize_image_if_needed(img)
+                
+                # Convert to base64 for API
+                img_buffer = io.BytesIO()
+                img.save(img_buffer, format='PNG')
+                img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+                
+                # Store image
+                images.append(img_buffer.getvalue())
+                
+                # Extract text using Mistral
+                try:
+                    text = self._extract_text_from_image(img_base64)
+                    page_texts.append(text)
+                except Exception as e:
+                    self.logger.warning(f"OCR failed for page {page_num + 1}", error=str(e))
+                    page_texts.append("")
+                
+        finally:
+            doc.close()
         
         # Combine all text
         full_text = "\n\n".join(page_texts)
@@ -125,17 +127,85 @@ class OCRHandler(LoggerMixin):
             text=full_text,
             pages=page_texts,
             images=images,
-            tables=[],  # Table extraction from OCR is complex, skip for now
+            tables=[],  # Table extraction can be added later
             document_info=doc_info,
             processing_time=0.0  # Will be set by caller
         )
     
-    def _create_empty_content(
-        self, doc_info, reason: str
-    ):
-        """Create empty content with error message"""
+    @log_api_call(provider="mistral")
+    def _extract_text_from_image(self, image_base64: str) -> str:
+        """Extract text from image using Mistral Vision API"""
         
-        from src.document.processor import ProcessedContent
+        prompt = """Please extract all text from this image. Return only the text content without any additional formatting or commentary. If the image contains tables, preserve the table structure using spaces or tabs. If there are multiple columns, separate them clearly."""
+        
+        payload = {
+            "model": Config.MISTRAL_MODEL,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": Config.MAX_TOKENS_PER_REQUEST,
+            "temperature": 0.1  # Low temperature for consistent OCR results
+        }
+        
+        try:
+            response = self.client.post("/chat/completions", json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if "choices" in result and len(result["choices"]) > 0:
+                content = result["choices"][0]["message"]["content"]
+                return content.strip()
+            else:
+                self.logger.warning("No content in Mistral response", response=result)
+                return ""
+                
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "Mistral API HTTP error",
+                status_code=e.response.status_code,
+                error=str(e)
+            )
+            raise
+        except Exception as e:
+            self.logger.error("Mistral API request failed", error=str(e))
+            raise
+    
+    def _resize_image_if_needed(self, img: Image.Image) -> Image.Image:
+        """Resize image if it exceeds maximum size"""
+        max_size = Config.OCR_MAX_IMAGE_SIZE
+        
+        if img.width > max_size or img.height > max_size:
+            # Calculate new size maintaining aspect ratio
+            ratio = min(max_size / img.width, max_size / img.height)
+            new_width = int(img.width * ratio)
+            new_height = int(img.height * ratio)
+            
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            self.logger.info(
+                "Image resized for OCR",
+                original_size=f"{img.width}x{img.height}",
+                new_size=f"{new_width}x{new_height}"
+            )
+        
+        return img
+    
+    def _create_empty_content(self, doc_info, reason: str) -> ProcessedContent:
+        """Create empty content with error message"""
         
         self.logger.warning("Creating empty content", reason=reason)
         
@@ -147,3 +217,8 @@ class OCRHandler(LoggerMixin):
             document_info=doc_info,
             processing_time=0.0
         )
+    
+    def __del__(self):
+        """Clean up HTTP client"""
+        if hasattr(self, 'client'):
+            self.client.close()
