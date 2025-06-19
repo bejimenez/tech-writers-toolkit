@@ -159,17 +159,25 @@ class ReviewView(LoggerMixin):
         )
     
     def _on_file_selected(self, file_path: Path):
-        """Handle file selection"""
+        """Handle file selection with database integration"""
         self.logger.info("File selected for review", filename=file_path.name)
+        
         if self.progress_bar:
             self.progress_bar.visible = True
         if self.status_text:
             self.status_text.value = f"Processing {file_path.name}..."
         if self.app.page:
             self.app.page.update()
+        
         try:
-            self.current_document = self.document_processor.process_document(file_path)
+            # Pass user_id to document processor
+            user_id = self.app.current_user or "anonymous"
+            self.current_document = self.document_processor.process_document(
+                file_path, 
+                user_id=user_id
+            )
             self._show_processing_results()
+            
         except Exception as e:
             self.logger.error("Document processing failed", error=str(e))
             if self.status_text:
@@ -178,13 +186,15 @@ class ReviewView(LoggerMixin):
                 self.progress_bar.visible = False
             if self.app.page:
                 self.app.page.update()
-    
+
     def _show_processing_results(self):
-        """Display document processing results"""
+        """Display document processing results with session info"""
         if not self.current_document:
             return
+        
         doc = self.current_document
         doc_info = doc.document_info
+        
         results_content = ft.Column(
             [
                 ft.Text(
@@ -192,6 +202,24 @@ class ReviewView(LoggerMixin):
                     size=20,
                     weight=ft.FontWeight.BOLD
                 ),
+                
+                # Session Information Card
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text("Session Information", weight=ft.FontWeight.BOLD),
+                                ft.Text(f"Session ID: {doc.session_id}"),
+                                ft.Text(f"User: {self.app.current_user}"),
+                                ft.Text(f"Status: Completed"),
+                            ],
+                            spacing=5
+                        ),
+                        padding=15
+                    )
+                ),
+                
+                # Document Information Card
                 ft.Card(
                     content=ft.Container(
                         content=ft.Column(
@@ -202,12 +230,16 @@ class ReviewView(LoggerMixin):
                                 ft.Text(f"File Size: {doc_info.file_size:,} bytes"),
                                 ft.Text(f"Processing Method: {doc_info.processing_method}"),
                                 ft.Text(f"Processing Time: {doc.processing_time:.2f} seconds"),
+                                ft.Text(f"Has Text: {'Yes' if doc_info.has_text else 'No'}"),
+                                ft.Text(f"Has Images: {'Yes' if doc_info.has_images else 'No'}"),
                             ],
                             spacing=5
                         ),
                         padding=15
                     )
                 ),
+                
+                # Text Content Preview Card
                 ft.Card(
                     content=ft.Container(
                         content=ft.Column(
@@ -232,6 +264,8 @@ class ReviewView(LoggerMixin):
                         padding=15
                     )
                 ),
+                
+                # Action Buttons
                 ft.Row(
                     [
                         ft.ElevatedButton(
@@ -239,6 +273,11 @@ class ReviewView(LoggerMixin):
                             icon="smart_toy",
                             on_click=self._start_ai_review,
                             disabled=True  # Will be enabled in Phase 2
+                        ),
+                        ft.ElevatedButton(
+                            "View Session History",
+                            icon="history",
+                            on_click=self._view_session_history
                         ),
                         ft.ElevatedButton(
                             "Export Results",
@@ -256,6 +295,7 @@ class ReviewView(LoggerMixin):
             ],
             spacing=15
         )
+        
         if self.results_container:
             self.results_container.content = results_content
             self.results_container.visible = True
@@ -265,6 +305,70 @@ class ReviewView(LoggerMixin):
             self.status_text.value = "Document processed successfully!"
         if self.app.page:
             self.app.page.update()
+
+    def _view_session_history(self, e):
+        """View recent processing sessions"""
+        try:
+            user_id = self.app.current_user or "anonymous"
+            recent_sessions = self.document_processor.get_recent_reviews(user_id, limit=5)
+            
+            if not recent_sessions:
+                content = ft.Text("No recent sessions found.")
+            else:
+                session_list = []
+                for session in recent_sessions:
+                    session_list.append(
+                        ft.ListTile(
+                            leading=ft.Icon("description"),
+                            title=ft.Text(session.document_filename),
+                            subtitle=ft.Text(
+                                f"Status: {session.status} | "
+                                f"Method: {session.processing_method} | "
+                                f"Time: {session.total_processing_time:.2f}s"
+                            ),
+                            trailing=ft.Text(
+                                session.created_at.strftime("%m/%d %H:%M") 
+                                if session.created_at else "Unknown"
+                            )
+                        )
+                    )
+                
+                content = ft.Column(
+                    [
+                        ft.Text("Recent Processing Sessions:", weight=ft.FontWeight.BOLD),
+                        ft.Container(height=10),
+                        *session_list
+                    ],
+                    height=300,
+                    scroll=ft.ScrollMode.AUTO
+                )
+            
+            dialog = ft.AlertDialog(
+                title=ft.Text("Session History"),
+                content=content,
+                actions=[
+                    ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
+                ]
+            )
+            
+            if self.app.page and hasattr(self.app.page, 'overlay'):
+                dialog.open = True
+                self.app.page.overlay.append(dialog)
+                self.app.page.update()
+                
+        except Exception as e:
+            self.logger.error("Failed to load session history", error=str(e))
+            error_dialog = ft.AlertDialog(
+                title=ft.Text("Error"),
+                content=ft.Text(f"Failed to load session history: {str(e)}"),
+                actions=[
+                    ft.TextButton("OK", on_click=lambda _: self._close_dialog(error_dialog))
+                ]
+            )
+            if self.app.page and hasattr(self.app.page, 'overlay'):
+                error_dialog.open = True
+                self.app.page.overlay.append(error_dialog)
+                self.app.page.update()
     
     def _start_ai_review(self, e):
         """Start AI-powered review (placeholder for Phase 2)"""
