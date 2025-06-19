@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from src.ui.components.file_uploader import FileUploader
 from src.document.processor import DocumentProcessor
 from src.utils.logger import LoggerMixin
+from src.utils.config import Config
 
 if TYPE_CHECKING:
     from ui.app import TechnicalWritingApp
@@ -18,11 +19,26 @@ class ReviewView(LoggerMixin):
         self.current_document = None
         self.review_results = None
         
+        # Initialize LLM manager if AI is enabled
+        self.llm_manager = None
+        if self._is_ai_enabled():
+            try:
+                from src.ai.llm_provider import LLMManager
+                self.llm_manager = LLMManager()
+                self.logger.info("LLM Manager initialized for review view")
+            except Exception as e:
+                self.logger.warning("Failed to initialize LLM Manager", error=str(e))
+        
         # UI components
         self.file_uploader = None
         self.progress_bar = None
         self.status_text = None
         self.results_container = None
+    
+    def _is_ai_enabled(self) -> bool:
+        """Check if AI features are enabled"""
+        return (Config.GROQ_API_KEY is not None or 
+                Config.GEMINI_API_KEY is not None)
     
     def build(self) -> ft.Control:
         """Build the review view"""
@@ -128,8 +144,14 @@ class ReviewView(LoggerMixin):
             visible=False
         )
         
+        # AI Status Card
+        ai_status_card = self._build_ai_status_card()
+        
         return ft.Column(
             [
+                # AI Status section
+                ai_status_card,
+                
                 # Upload section
                 ft.Card(
                     content=ft.Container(
@@ -157,6 +179,229 @@ class ReviewView(LoggerMixin):
             spacing=20,
             scroll=ft.ScrollMode.AUTO
         )
+    
+    def _build_ai_status_card(self) -> ft.Control:
+        """Build AI status and testing card"""
+        
+        if not self._is_ai_enabled():
+            return ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Icon("info", color="orange"),
+                                    ft.Text(
+                                        "AI Features Disabled",
+                                        size=18,
+                                        weight=ft.FontWeight.BOLD
+                                    )
+                                ]
+                            ),
+                            ft.Text(
+                                "Add GROQ_API_KEY or GEMINI_API_KEY to .env file to enable AI review features.",
+                                size=12,
+                                color="outline"
+                            )
+                        ],
+                        spacing=10
+                    ),
+                    padding=15
+                )
+            )
+        
+        # AI is enabled - show status and test buttons
+        return ft.Card(
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.Icon("smart_toy", color="green"),
+                                ft.Text(
+                                    "AI Review System",
+                                    size=18,
+                                    weight=ft.FontWeight.BOLD
+                                )
+                            ]
+                        ),
+                        ft.Text(
+                            f"Default Provider: {Config.DEFAULT_PROVIDER.title()} | "
+                            f"Fallback: {Config.FALLBACK_PROVIDER.title()}",
+                            size=12,
+                            color="outline"
+                        ),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton(
+                                    "Test AI Connection",
+                                    icon="wifi_tethering",
+                                    on_click=self._test_ai_connection
+                                ),
+                                ft.ElevatedButton(
+                                    "Test Groq",
+                                    icon="api",
+                                    on_click=lambda _: self._test_specific_provider("groq"),
+                                    disabled=not Config.GROQ_API_KEY
+                                ),
+                                ft.ElevatedButton(
+                                    "Test Gemini", 
+                                    icon="api",
+                                    on_click=lambda _: self._test_specific_provider("gemini"),
+                                    disabled=not Config.GEMINI_API_KEY
+                                )
+                            ],
+                            spacing=10
+                        )
+                    ],
+                    spacing=10
+                ),
+                padding=15
+            )
+        )
+    
+    def _test_ai_connection(self, e):
+        """Test AI connection using default provider"""
+        if not self.llm_manager:
+            self._show_error_dialog("AI Manager not initialized")
+            return
+        
+        self._show_ai_test_dialog("Testing AI Connection...")
+        
+        try:
+            # Test default provider first
+            results = self.llm_manager.test_connection()
+            self._show_ai_test_results(results)
+            
+        except Exception as e:
+            self.logger.error("AI connection test failed", error=str(e))
+            self._show_error_dialog(f"AI test failed: {str(e)}")
+    
+    def _test_specific_provider(self, provider: str):
+        """Test specific AI provider"""
+        if not self.llm_manager:
+            self._show_error_dialog("AI Manager not initialized")
+            return
+        
+        self._show_ai_test_dialog(f"Testing {provider.title()} connection...")
+        
+        try:
+            results = self.llm_manager.test_connection(provider)
+            self._show_ai_test_results(results)
+            
+        except Exception as e:
+            self.logger.error(f"{provider} connection test failed", error=str(e))
+            self._show_error_dialog(f"{provider.title()} test failed: {str(e)}")
+    
+    def _show_ai_test_dialog(self, message: str):
+        """Show AI test in progress dialog"""
+        # Clear any existing dialogs first
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            self.app.page.overlay.clear()
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text("AI Connection Test"),
+            content=ft.Row(
+                [
+                    ft.ProgressRing(width=30, height=30),
+                    ft.Text(message)
+                ],
+                spacing=15
+            )
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+    
+    def _show_ai_test_results(self, results: dict):
+        """Show AI test results dialog"""
+        # Close any existing dialogs
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            self.app.page.overlay.clear()
+        
+        # Build results content
+        results_content = []
+        
+        for provider, result in results.items():
+            if result["available"]:
+                results_content.append(
+                    ft.Row(
+                        [
+                            ft.Icon("check_circle", color="green"),
+                            ft.Text(f"{provider.title()}: "),
+                            ft.Text(
+                                f"✓ Connected ({result['response_time']})",
+                                color="green"
+                            )
+                        ]
+                    )
+                )
+                
+                # Show sample response
+                if "response" in result and result["response"]:
+                    results_content.append(
+                        ft.Container(
+                            content=ft.Text(
+                                f"Response: {result['response']}",
+                                size=10,
+                                color="outline"
+                            ),
+                            padding=ft.padding.only(left=30)
+                        )
+                    )
+            else:
+                results_content.append(
+                    ft.Row(
+                        [
+                            ft.Icon("error", color="red"),
+                            ft.Text(f"{provider.title()}: "),
+                            ft.Text(
+                                f"✗ Failed - {result['error']}",
+                                color="red"
+                            )
+                        ]
+                    )
+                )
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text("AI Connection Test Results"),
+            content=ft.Container(
+                content=ft.Column(
+                    results_content,
+                    spacing=10
+                ),
+                width=500
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
+            ]
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+    
+    def _show_error_dialog(self, message: str):
+        """Show error dialog"""
+        # Close any existing dialogs
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            self.app.page.overlay.clear()
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text("Error"),
+            content=ft.Text(message),
+            actions=[
+                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog))
+            ]
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
     
     def _on_file_selected(self, file_path: Path):
         """Handle file selection with database integration"""
@@ -194,6 +439,9 @@ class ReviewView(LoggerMixin):
         
         doc = self.current_document
         doc_info = doc.document_info
+        
+        # Determine if AI review is available
+        ai_review_available = self._is_ai_enabled() and self.llm_manager is not None
         
         results_content = ft.Column(
             [
@@ -272,7 +520,7 @@ class ReviewView(LoggerMixin):
                             "Start AI Review",
                             icon="smart_toy",
                             on_click=self._start_ai_review,
-                            disabled=True  # Will be enabled in Phase 2
+                            disabled=not ai_review_available
                         ),
                         ft.ElevatedButton(
                             "View Session History",
@@ -358,27 +606,89 @@ class ReviewView(LoggerMixin):
                 
         except Exception as e:
             self.logger.error("Failed to load session history", error=str(e))
-            error_dialog = ft.AlertDialog(
-                title=ft.Text("Error"),
-                content=ft.Text(f"Failed to load session history: {str(e)}"),
-                actions=[
-                    ft.TextButton("OK", on_click=lambda _: self._close_dialog(error_dialog))
-                ]
-            )
-            if self.app.page and hasattr(self.app.page, 'overlay'):
-                error_dialog.open = True
-                self.app.page.overlay.append(error_dialog)
-                self.app.page.update()
+            self._show_error_dialog(f"Failed to load session history: {str(e)}")
     
     def _start_ai_review(self, e):
-        """Start AI-powered review (placeholder for Phase 2)"""
+        """Start AI-powered review"""
+        if not self.llm_manager:
+            self._show_error_dialog("AI Manager not available")
+            return
+        
+        if not self.current_document:
+            self._show_error_dialog("No document loaded")
+            return
+        
+        # For Step 1, just show a simple AI response test
+        self._show_ai_test_dialog("Running AI review test...")
+        
+        try:
+            from src.ai.prompts import PromptTemplates
+            
+            # Simple test prompt with document
+            test_prompt = f"""
+{PromptTemplates.CONNECTION_TEST}
+
+Please analyze this document excerpt and provide a brief assessment:
+
+{self.current_document.text[:500]}...
+
+Provide a short response (under 100 words) about the document's general quality.
+"""
+            
+            response = self.llm_manager.generate_response(
+                test_prompt,
+                max_tokens=150,
+                temperature=0.3
+            )
+            
+            self._show_ai_review_test_results(response)
+            
+        except Exception as e:
+            self.logger.error("AI review test failed", error=str(e))
+            self._show_error_dialog(f"AI review failed: {str(e)}")
+    
+    def _show_ai_review_test_results(self, response: str):
+        """Show AI review test results"""
+        # Close any existing dialogs
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            self.app.page.overlay.clear()
+        
         dialog = ft.AlertDialog(
-            title=ft.Text("AI Review"),
-            content=ft.Text("AI review functionality will be implemented in Phase 2."),
+            title=ft.Text("AI Review Test Results"),
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            "AI Analysis Response:",
+                            weight=ft.FontWeight.BOLD
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                response,
+                                size=12,
+                                selectable=True
+                            ),
+                            bgcolor="surface_variant",
+                            padding=10,
+                            border_radius=5,
+                            width=500
+                        ),
+                        ft.Container(height=10),
+                        ft.Text(
+                            "✓ AI review system is working! Full agent implementation coming in Step 2.",
+                            color="green",
+                            weight=ft.FontWeight.BOLD
+                        )
+                    ],
+                    spacing=10
+                ),
+                width=550
+            ),
             actions=[
-                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog))
+                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
             ]
         )
+        
         if self.app.page and hasattr(self.app.page, 'overlay'):
             dialog.open = True
             self.app.page.overlay.append(dialog)

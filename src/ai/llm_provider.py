@@ -30,6 +30,7 @@ class LLMProvider(ABC, LoggerMixin):
 
 class GroqProvider(LLMProvider):
     """Groq API provider implementation."""
+    
     def __init__(self):
         if not Config.GROQ_API_KEY:
             raise ValueError("GROQ_API_KEY is not set in the configuration.")
@@ -42,6 +43,8 @@ class GroqProvider(LLMProvider):
             },
             timeout=60
         )
+        self.logger.info("Groq provider initialized")
+    
     @log_api_call(provider="groq")
     def generate_response(
         self,
@@ -52,7 +55,7 @@ class GroqProvider(LLMProvider):
         """Generate response using Groq API."""
 
         payload = {
-            "model": "groq/groq-llama-3-70b",
+            "model": "llama-3.1-70b-versatile",  # Updated to working model
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens or Config.MAX_TOKENS_PER_REQUEST,
             "temperature": temperature
@@ -83,11 +86,10 @@ class GroqProvider(LLMProvider):
     
     def is_available(self) -> bool:
         """Check if Groq API is available"""
-
         try:
             # Simple health check
-            self.generate_response("Test", max_tokens=1)
-            return True
+            response = self.generate_response("Hello", max_tokens=10)
+            return len(response) > 0
         except Exception:
             return False
         
@@ -97,11 +99,10 @@ class GeminiProvider(LLMProvider):
     def __init__(self):
         if not Config.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is required")
-        try:
-            from google import genai
-            self.client = genai.Client(api_key=Config.GEMINI_API_KEY)
-        except ImportError:
-            raise ImportError("google-genai package is required for Gemini")
+        
+        self.api_key = Config.GEMINI_API_KEY
+        self.client = httpx.Client(timeout=60)
+        self.logger.info("Gemini provider initialized")
     
     @log_api_call(provider="gemini")
     def generate_response(
@@ -110,18 +111,48 @@ class GeminiProvider(LLMProvider):
         max_tokens: Optional[int] = None,
         temperature: float = 0.7
     ) -> str:
-        """Generate response using Gemini API"""
+        """Generate response using Gemini REST API"""
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+        
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens or Config.MAX_TOKENS_PER_REQUEST,
+            }
+        }
+        
         try:
-            from google.genai import types
-            response = self.client.models.generate_content(
-                model="gemini-2.0-flash-001",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    max_output_tokens=max_tokens or Config.MAX_TOKENS_PER_REQUEST,
-                    temperature=temperature
-                )
+            response = self.client.post(url, json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if ("candidates" in result and 
+                len(result["candidates"]) > 0 and
+                "content" in result["candidates"][0] and
+                "parts" in result["candidates"][0]["content"] and
+                len(result["candidates"][0]["content"]["parts"]) > 0):
+                
+                return result["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                self.logger.error("Unexpected response format from Gemini API", response=result)
+                return ""
+                
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "Gemini API request failed",
+                status_code=e.response.status_code,
+                error=str(e)
             )
-            return response.text or ""
+            raise
         except Exception as e:
             self.logger.error("Gemini API request failed", error=str(e))
             raise
@@ -129,11 +160,10 @@ class GeminiProvider(LLMProvider):
     def is_available(self) -> bool:
         """Check if Gemini API is available"""
         try:
-            self.generate_response("Test", max_tokens=1)
-            return True
+            response = self.generate_response("Hello", max_tokens=10)
+            return len(response) > 0
         except Exception:
             return False
-        
 
 class LLMManager(LoggerMixin):
     """Manages LLM providers with fallback logic"""
@@ -147,12 +177,14 @@ class LLMManager(LoggerMixin):
     
     def _initialize_providers(self):
         """Initialize available providers"""
+        # Initialize Groq provider if configured
         try:
             if Config.GROQ_API_KEY:
                 self.providers["groq"] = GroqProvider()
                 self.logger.info("Groq provider initialized")
         except Exception as e:
             self.logger.warning("Failed to initialize Groq provider", error=str(e))
+        
         # Initialize Gemini provider if configured
         try:
             if Config.GEMINI_API_KEY:
@@ -216,6 +248,54 @@ class LLMManager(LoggerMixin):
         """Get list of available provider names"""
         available = []
         for name, provider in self.providers.items():
-            if provider.is_available():
-                available.append(name)
+            try:
+                if provider.is_available():
+                    available.append(name)
+            except Exception:
+                pass  # Provider not available
         return available
+    
+    def test_connection(self, provider: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Test connection to LLM providers
+        
+        Args:
+            provider: Specific provider to test, or None for all
+            
+        Returns:
+            Dictionary with test results
+        """
+        results = {}
+        
+        providers_to_test = [provider] if provider else list(self.providers.keys())
+        
+        for provider_name in providers_to_test:
+            if provider_name not in self.providers:
+                results[provider_name] = {
+                    "available": False,
+                    "error": "Provider not configured"
+                }
+                continue
+            
+            try:
+                start_time = time.time()
+                response = self.providers[provider_name].generate_response(
+                    "Say 'Hello' if you can understand this message.",
+                    max_tokens=50,
+                    temperature=0.1
+                )
+                response_time = time.time() - start_time
+                
+                results[provider_name] = {
+                    "available": True,
+                    "response_time": f"{response_time:.2f}s",
+                    "response": response[:100]  # First 100 chars
+                }
+                
+            except Exception as e:
+                results[provider_name] = {
+                    "available": False,
+                    "error": str(e)
+                }
+        
+        return results
