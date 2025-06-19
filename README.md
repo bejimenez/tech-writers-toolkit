@@ -47,7 +47,7 @@ A Python-based desktop application for reviewing and analyzing technical documen
    ```
    Edit `.env` with your API keys (optional for Phase 1):
    ```
-   GROK_API_KEY=your_grok_api_key_here
+   GROQ_API_KEY=your_groq_api_key_here
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
@@ -125,7 +125,7 @@ LOG_LEVEL=INFO
 LOG_FORMAT=console
 
 # API Keys (for Phase 2)
-GROK_API_KEY=your_key_here
+GROQ_API_KEY=your_key_here
 GEMINI_API_KEY=your_key_here
 ```
 
