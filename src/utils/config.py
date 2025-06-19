@@ -24,9 +24,9 @@ class Config:
     MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "pixtral-12b-2409")
 
     # API Configuration (Phase 2, not implemented yet)
-    GROK_API_KEY = os.getenv("GROK_API_KEY")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "grok")
+    DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "groq")
     FALLBACK_PROVIDER = os.getenv("FALLBACK_PROVIDER", "gemini")
 
      # OCR Settings
@@ -68,17 +68,22 @@ class Config:
         """Validate configuration and return list of errors"""
         errors = []
 
+        # Phase 1: Only validate Mistral for OCR
         if not cls.MISTRAL_API_KEY:
-            errors.append("MISTRAL_API_KEY must be provided.")
+            errors.append("MISTRAL_API_KEY must be provided for OCR functionality.")
 
-        if not cls.GROK_API_KEY and not cls.GEMINI_API_KEY:
-            errors.append("At least one API key (Grok or Gemini) must be provided.")
+        # Phase 2: Only validate if we're using AI agents
+        phase2_enabled = os.getenv("ENABLE_AI_AGENTS", "false").lower() == "true"
+        
+        if phase2_enabled:
+            if not cls.GROQ_API_KEY and not cls.GEMINI_API_KEY:
+                errors.append("At least one AI API key (Groq or Gemini) must be provided for Phase 2.")
 
-        if cls.DEFAULT_PROVIDER not in ["grok", "gemini"]:
-            errors.append("DEFAULT_PROVIDER must be either 'grok' or 'gemini'.")
+            if cls.DEFAULT_PROVIDER not in ["groq", "gemini"]:
+                errors.append("DEFAULT_PROVIDER must be either 'groq' or 'gemini'.")
 
-        if cls.FALLBACK_PROVIDER not in ["grok", "gemini"]:
-            errors.append("FALLBACK_PROVIDER must be either 'grok' or 'gemini'.")
+            if cls.FALLBACK_PROVIDER not in ["groq", "gemini"]:
+                errors.append("FALLBACK_PROVIDER must be either 'groq' or 'gemini'.")
 
         if cls.LOG_FORMAT not in ["console", "json"]:
             errors.append("LOG_FORMAT must be either 'console' or 'json'.")

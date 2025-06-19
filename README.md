@@ -200,7 +200,7 @@ pytest tests/
 The next phase will add:
 
 - **AI Agents**: Multi-agent review system using CrewAI
-- **LLM Integration**: Grok and Gemini API integration
+- **LLM Integration**: Groq and Gemini API integration
 - **Advanced Analysis**: Technical accuracy, formatting, and diagram review
 - **Export Features**: Generate review reports
 - **Database Storage**: Review history and analytics

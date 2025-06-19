@@ -36,7 +36,7 @@ class TechnicalWritingApp(LoggerMixin):
         if not self.page:
             return
         self.page.title = Config.APP_NAME
-        self.page.theme_mode = ft.ThemeMode.LIGHT
+        self.page.theme_mode = ft.ThemeMode.DARK
         self.page.padding = 0
 
         # Set up theme

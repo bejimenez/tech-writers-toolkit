@@ -125,11 +125,11 @@ def create_env_example():
     """Create .env.example file with configuration template"""
     
     env_content = """# API Configuration
-GROK_API_KEY=your_grok_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Model Selection
-DEFAULT_PROVIDER=grok
+DEFAULT_PROVIDER=groq
 FALLBACK_PROVIDER=gemini
 
 # Cost Control
