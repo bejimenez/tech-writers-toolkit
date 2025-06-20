@@ -95,6 +95,7 @@ class ReviewView(LoggerMixin):
             expand=True,
             spacing=0
         )
+    
     def _on_keyboard_event(self, e):
         """Handle keyboard events for escape key"""
         if e.key == "Escape":
@@ -578,6 +579,215 @@ class ReviewView(LoggerMixin):
         if self.app.page:
             self.app.page.update()
 
+    def _start_ai_review(self, e):
+        """Start AI-powered review using agents"""
+        if not self.current_document:
+            self._show_error_dialog("No document loaded")
+            return
+        
+        # Show progress dialog
+        self._show_ai_review_progress("Starting AI review...")
+        
+        try:
+            # Initialize agent manager
+            from src.ai.agent_manager import AgentManager
+            agent_manager = AgentManager()
+            
+            # Start the review process
+            review_result = agent_manager.start_review(
+                self.current_document,
+                agents_to_use=["technical"]  # Step 2: Just technical agent
+            )
+            
+            # Show results
+            self._show_agent_review_results(review_result)
+            
+        except Exception as e:
+            self.logger.error("AI agent review failed", error=str(e))
+            self._show_error_dialog(f"AI review failed: {str(e)}")
+    
+    def _show_ai_review_progress(self, message: str):
+        """Show AI review progress dialog"""
+        self._clear_all_dialogs()
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text("AI Agent Review"),
+            content=ft.Row(
+                [
+                    ft.ProgressRing(width=30, height=30),
+                    ft.Text(message)
+                ],
+                spacing=15
+            ),
+            modal=False
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+    
+    def _show_agent_review_results(self, review_result):
+        """Show comprehensive agent review results"""
+        self._clear_all_dialogs()
+        
+        # Build results content
+        results_content = []
+        
+        # Summary section
+        results_content.append(
+            ft.Text("Review Summary", size=18, weight=ft.FontWeight.BOLD)
+        )
+        results_content.append(
+            ft.Container(
+                content=ft.Text(
+                    review_result.summary,
+                    size=14
+                ),
+                bgcolor="surface_variant",
+                padding=10,
+                border_radius=5
+            )
+        )
+        
+        # Statistics
+        stats_row = ft.Row([
+            ft.Text(f"Status: {review_result.status.title()}", weight=ft.FontWeight.BOLD),
+            ft.Text(f"Total Findings: {len(review_result.findings)}"),
+            ft.Text(f"Processing Time: {review_result.total_processing_time:.2f}s")
+        ], spacing=20)
+        results_content.append(stats_row)
+        
+        results_content.append(ft.Divider())
+        
+        # Agent-specific results
+        if review_result.agent_results:
+            for agent_name, agent_findings in review_result.agent_results.items():
+                results_content.append(
+                    ft.Text(
+                        f"{agent_name.replace('_', ' ').title()} Agent Results ({len(agent_findings)} findings)",
+                        size=16,
+                        weight=ft.FontWeight.BOLD
+                    )
+                )
+                
+                if not agent_findings:
+                    results_content.append(
+                        ft.Text("No issues found by this agent.", color="green")
+                    )
+                else:
+                    # Group findings by severity
+                    severity_groups = {"error": [], "warning": [], "info": []}
+                    for finding in agent_findings:
+                        severity_groups[finding.severity].append(finding)
+                    
+                    # Display findings by severity
+                    for severity in ["error", "warning", "info"]:
+                        findings = severity_groups[severity]
+                        if findings:
+                            severity_colors = {
+                                "error": "red",
+                                "warning": "orange", 
+                                "info": "blue"
+                            }
+                            
+                            results_content.append(
+                                ft.Text(
+                                    f"{severity.title()}s ({len(findings)}):",
+                                    weight=ft.FontWeight.BOLD,
+                                    color=severity_colors[severity]
+                                )
+                            )
+                            
+                            for finding in findings:
+                                finding_card = ft.Card(
+                                    content=ft.Container(
+                                        content=ft.Column([
+                                            ft.Row([
+                                                ft.Icon(
+                                                    "error" if severity == "error" else 
+                                                    "warning" if severity == "warning" else "info",
+                                                    color=severity_colors[severity]
+                                                ),
+                                                ft.Text(f"Location: {finding.location}", weight=ft.FontWeight.BOLD)
+                                            ]),
+                                            ft.Text(finding.description),
+                                            ft.Text(
+                                                f"Suggestion: {finding.suggestion}",
+                                                size=12,
+                                                color="outline"
+                                            ) if finding.suggestion else ft.Container(),
+                                            ft.Text(
+                                                f"Confidence: {finding.confidence:.1%}",
+                                                size=10,
+                                                color="outline"
+                                            )
+                                        ], spacing=5),
+                                        padding=10
+                                    )
+                                )
+                                results_content.append(finding_card)
+                
+                results_content.append(ft.Container(height=20))
+        
+        # Create scrollable content
+        dialog = ft.AlertDialog(
+            title=ft.Text("AI Agent Review Results"),
+            content=ft.Container(
+                content=ft.Column(
+                    results_content,
+                    spacing=10,
+                    scroll=ft.ScrollMode.AUTO
+                ),
+                width=700,
+                height=500
+            ),
+            actions=[
+                ft.ElevatedButton(
+                    "Export Report",
+                    icon="download",
+                    on_click=lambda _: self._export_agent_report(review_result)
+                ),
+                ft.TextButton(
+                    "Close",
+                    on_click=lambda _: self._close_dialog(dialog)
+                )
+            ],
+            modal=False
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+    
+    def _export_agent_report(self, review_result):
+        """Export agent review report (placeholder)"""
+        # For now, just show a confirmation
+        self._show_info_dialog(
+            "Export Report",
+            f"Report export functionality will be implemented soon.\n\n"
+            f"Report would include:\n"
+            f"- {len(review_result.findings)} findings\n"
+            f"- Results from {len(review_result.agent_results)} agent(s)\n"
+            f"- Processing time: {review_result.total_processing_time:.2f}s"
+        )
+    
+    def _show_info_dialog(self, title: str, message: str):
+        """Show informational dialog"""
+        dialog = ft.AlertDialog(
+            title=ft.Text(title),
+            content=ft.Text(message),
+            actions=[
+                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog))
+            ]
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+
     def _view_session_history(self, e):
         """View recent processing sessions"""
         try:
@@ -631,97 +841,6 @@ class ReviewView(LoggerMixin):
         except Exception as e:
             self.logger.error("Failed to load session history", error=str(e))
             self._show_error_dialog(f"Failed to load session history: {str(e)}")
-    
-    def _start_ai_review(self, e):
-        """Start AI-powered review"""
-        if not self.llm_manager:
-            self._show_error_dialog("AI Manager not available")
-            return
-        
-        if not self.current_document:
-            self._show_error_dialog("No document loaded")
-            return
-        
-        # For Step 1, just show a simple AI response test
-        self._show_ai_test_dialog("Running AI review test...")
-        
-        try:
-            from src.ai.prompts import PromptTemplates
-            
-            # Simple test prompt with document
-            test_prompt = f"""
-{PromptTemplates.CONNECTION_TEST}
-
-Please analyze this document excerpt and provide a brief assessment:
-
-{self.current_document.text[:500]}...
-
-Provide a short response (under 100 words) about the document's general quality.
-"""
-            
-            response = self.llm_manager.generate_response(
-                test_prompt,
-                max_tokens=150,
-                temperature=0.3
-            )
-            
-            self._show_ai_review_test_results(response)
-            
-        except Exception as e:
-            self.logger.error("AI review test failed", error=str(e))
-            self._show_error_dialog(f"AI review failed: {str(e)}")
-    
-    def _show_ai_review_test_results(self, response: str):
-        """Show AI review test results"""
-        # Close any existing dialogs
-        self._clear_all_dialogs()
-        
-        dialog = ft.AlertDialog(
-            title=ft.Text("AI Review Test Results"),
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text(
-                            "AI Analysis Response:",
-                            weight=ft.FontWeight.BOLD
-                        ),
-                        ft.Container(
-                            content=ft.Text(
-                                response,
-                                size=12,
-                                selectable=True
-                            ),
-                            bgcolor="surface_variant",
-                            padding=10,
-                            border_radius=5,
-                            width=500
-                        ),
-                        ft.Container(height=10),
-                        ft.Text(
-                            "✓ AI review system is working! Full agent implementation coming in Step 2.",
-                            color="green",
-                            weight=ft.FontWeight.BOLD
-                        )
-                    ],
-                    spacing=10,
-                    scroll=ft.ScrollMode.AUTO
-                ),
-                width=550,
-                height=400  # Set max height
-            ),
-            actions=[
-                ft.TextButton(
-                    "Close", 
-                    on_click=lambda _: self._close_dialog(dialog)
-                )
-            ],
-            modal=False  # Remove modal behavior
-        )
-        
-        if self.app.page and hasattr(self.app.page, 'overlay'):
-            dialog.open = True
-            self.app.page.overlay.append(dialog)
-            self.app.page.update()
 
     def _export_results(self, e):
         """Export processing results"""

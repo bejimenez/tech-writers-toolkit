@@ -9,22 +9,14 @@ This guide will help you set up and run the Technical Writing Assistant on your 
 - **Memory**: At least 4GB RAM recommended
 - **Storage**: 500MB for application and dependencies
 
-### Optional Dependencies
-
-For OCR functionality (processing scanned documents):
-- **Tesseract OCR**: 
-  - Windows: Download from [GitHub releases](https://github.com/UB-Mannheim/tesseract/wiki)
-  - macOS: `brew install tesseract`
-  - Ubuntu/Debian: `sudo apt install tesseract-ocr`
-
 ## Installation
 
 ### Method 1: Automated Setup (Recommended)
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repository-url>
-   cd tech-writer-assistant
+   git clone https://github.com/bejimenez/tech-writers-toolkit.git
+   cd tech-writers-toolkit
    ```
 
 2. **Run the setup script**
@@ -46,7 +38,7 @@ For OCR functionality (processing scanned documents):
    Edit the `.env` file with your settings:
    ```bash
    # Optional: Add API keys for Phase 2
-   GROK_API_KEY=your_grok_api_key_here
+   GROQ_API_KEY=your_groq_api_key_here
    GEMINI_API_KEY=your_gemini_api_key_here
    
    # Application settings
@@ -83,7 +75,7 @@ For OCR functionality (processing scanned documents):
    - Username: any value (e.g., "admin")
    - Password: any value (e.g., "password")
    
-   *Note: Phase 1 uses simplified authentication*
+   *Note: Currently uses simplified authentication*
 
 3. **Test document processing**
    - Click "Review Document"
