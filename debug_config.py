@@ -1,70 +1,108 @@
 #!/usr/bin/env python3
 """
-Debug script to check API key configuration
+Simple test to check if environment variables are loading correctly
 """
 
 import os
+import sys
 from pathlib import Path
-from dotenv import load_dotenv
 
-def debug_config():
-    """Debug configuration setup"""
+def test_env_loading():
+    """Test environment variable loading"""
     
-    print("API Configuration Debug")
+    print("Environment Variable Test")
     print("=" * 30)
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Python path: {sys.path[0]}")
     
-    # Check .env file exists
+    # Check if .env file exists
     env_file = Path(".env")
-    if not env_file.exists():
-        print("❌ .env file not found!")
-        print("   Please copy .env.example to .env and add your API keys")
-        return False
+    print(f".env file exists: {env_file.exists()}")
     
-    print("✅ .env file found")
+    if env_file.exists():
+        print(f".env file path: {env_file.absolute()}")
+        # Read .env file directly
+        with open(env_file, 'r') as f:
+            lines = f.readlines()
+        print(f"Lines in .env file: {len(lines)}")
+        
+        # Check for API key lines
+        groq_line = None
+        gemini_line = None
+        for line in lines:
+            if line.startswith('GROQ_API_KEY='):
+                groq_line = line.strip()
+            elif line.startswith('GEMINI_API_KEY='):
+                gemini_line = line.strip()
+        
+        print(f"Found GROQ line: {groq_line is not None}")
+        print(f"Found GEMINI line: {gemini_line is not None}")
+        
+        if groq_line:
+            print(f"GROQ line length: {len(groq_line)}")
+        if gemini_line:
+            print(f"GEMINI line length: {len(gemini_line)}")
     
-    # Load environment variables
-    load_dotenv()
+    # Test with manual dotenv loading
+    try:
+        from dotenv import load_dotenv
+        
+        # Load from current directory
+        result = load_dotenv()
+        print(f"dotenv load result: {result}")
+        
+        # Test direct environment access
+        groq_from_env = os.getenv("GROQ_API_KEY")
+        gemini_from_env = os.getenv("GEMINI_API_KEY")
+        
+        print(f"GROQ from os.getenv: {groq_from_env is not None}")
+        print(f"GEMINI from os.getenv: {gemini_from_env is not None}")
+        
+        if groq_from_env:
+            print(f"GROQ key length: {len(groq_from_env)}")
+            print(f"GROQ starts with: {groq_from_env[:10]}")
+        
+        if gemini_from_env:
+            print(f"GEMINI key length: {len(gemini_from_env)}")
+            print(f"GEMINI starts with: {gemini_from_env[:10]}")
+            
+    except ImportError as e:
+        print(f"Could not import dotenv: {e}")
     
-    # Check API keys
-    groq_key = os.getenv("GROQ_API_KEY")
-    gemini_key = os.getenv("GEMINI_API_KEY")
-    
-    print(f"\nAPI Keys Status:")
-    print(f"GROQ_API_KEY: {'✅ Set' if groq_key and groq_key != 'your_groq_api_key_here' else '❌ Not set or placeholder'}")
-    if groq_key:
-        print(f"   Value starts with: {groq_key[:10]}...")
-    
-    print(f"GEMINI_API_KEY: {'✅ Set' if gemini_key and gemini_key != 'your_gemini_api_key_here' else '❌ Not set or placeholder'}")
-    if gemini_key:
-        print(f"   Value starts with: {gemini_key[:10]}...")
-    
-    # Check for placeholder values and key validity
-    groq_valid = groq_key and groq_key != "your_groq_api_key_here" and len(groq_key) > 30
-    gemini_valid = gemini_key and gemini_key != "your_gemini_api_key_here" and len(gemini_key) > 30
-    
-    if groq_key == "your_groq_api_key_here":
-        print("⚠️  GROQ_API_KEY still has placeholder value")
-    elif groq_key and len(groq_key) < 40:
-        print(f"⚠️  GROQ_API_KEY seems too short ({len(groq_key)} chars) - may be truncated")
-    
-    if gemini_key == "your_gemini_api_key_here":
-        print("⚠️  GEMINI_API_KEY still has placeholder value")
-    elif gemini_key and len(gemini_key) < 30:
-        print(f"⚠️  GEMINI_API_KEY seems too short ({len(gemini_key)} chars)")
-    
-    if not groq_key and not gemini_key:
-        print("❌ No API keys found!")
-        return False
-    
-    if not groq_valid and not gemini_valid:
-        print("❌ No valid API keys found!")
-        return False
-    
-    print(f"\nValidation Summary:")
-    print(f"Groq key valid: {'✅' if groq_valid else '❌'}")
-    print(f"Gemini key valid: {'✅' if gemini_valid else '❌'}")
-    
-    return True
+    # Test direct config import
+    print("\n" + "=" * 30)
+    print("Testing Config Import")
+    try:
+        # Add src to path
+        src_path = Path(__file__).parent / "src"
+        if src_path.exists():
+            sys.path.insert(0, str(src_path))
+        else:
+            # Try current working directory
+            src_path = Path.cwd() / "src"
+            if src_path.exists():
+                sys.path.insert(0, str(src_path))
+            else:
+                print("Could not find 'src' directory for config import.")
+        
+        from utils.config import Config
+        
+        print(f"Config.GROQ_API_KEY set: {Config.GROQ_API_KEY is not None}")
+        print(f"Config.GEMINI_API_KEY set: {Config.GEMINI_API_KEY is not None}")
+        
+        if Config.GROQ_API_KEY:
+            print(f"Config GROQ length: {len(Config.GROQ_API_KEY)}")
+        if Config.GEMINI_API_KEY:
+            print(f"Config GEMINI length: {len(Config.GEMINI_API_KEY)}")
+            
+        # Test AI status
+        ai_status = Config.get_ai_status()
+        print(f"AI Status: {ai_status}")
+        
+    except Exception as e:
+        print(f"Config import failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
-    debug_config()
+    test_env_loading()
