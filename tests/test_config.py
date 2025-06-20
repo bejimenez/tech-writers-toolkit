@@ -8,7 +8,7 @@ from pathlib import Path
 
 # Add src to path for imports
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.config import Config
 
@@ -23,9 +23,9 @@ class TestConfig:
         assert Config.MAX_TOKENS_PER_REQUEST == 2000
     
     @patch.dict(os.environ, {
-        'GROK_API_KEY': 'test_grok_key',
+        'GROQ_API_KEY': 'test_groq_key',
         'GEMINI_API_KEY': 'test_gemini_key',
-        'DEFAULT_PROVIDER': 'grok',
+        'DEFAULT_PROVIDER': 'groq',
         'LOG_LEVEL': 'DEBUG'
     })
     def test_environment_override(self):
@@ -34,16 +34,16 @@ class TestConfig:
         import importlib
         from src.utils import config
         importlib.reload(config)
-        
-        assert config.Config.GROK_API_KEY == 'test_grok_key'
+
+        assert config.Config.GROQ_API_KEY == 'test_groq_key'
         assert config.Config.GEMINI_API_KEY == 'test_gemini_key'
-        assert config.Config.DEFAULT_PROVIDER == 'grok'
+        assert config.Config.DEFAULT_PROVIDER == 'groq'
         assert config.Config.LOG_LEVEL == 'DEBUG'
     
     def test_config_validation_success(self):
         """Test successful configuration validation"""
-        with patch.object(Config, 'GROK_API_KEY', 'test_key'):
-            with patch.object(Config, 'DEFAULT_PROVIDER', 'grok'):
+        with patch.object(Config, 'GROQ_API_KEY', 'test_key'):
+            with patch.object(Config, 'DEFAULT_PROVIDER', 'groq'):
                 with patch.object(Config, 'FALLBACK_PROVIDER', 'gemini'):
                     with patch.object(Config, 'LOG_FORMAT', 'console'):
                         errors = Config.validate_config()
@@ -51,7 +51,7 @@ class TestConfig:
     
     def test_config_validation_missing_api_keys(self):
         """Test configuration validation with missing API keys"""
-        with patch.object(Config, 'GROK_API_KEY', None):
+        with patch.object(Config, 'GROQ_API_KEY', None):
             with patch.object(Config, 'GEMINI_API_KEY', None):
                 errors = Config.validate_config()
                 assert len(errors) > 0
@@ -59,7 +59,7 @@ class TestConfig:
     
     def test_config_validation_invalid_provider(self):
         """Test configuration validation with invalid provider"""
-        with patch.object(Config, 'GROK_API_KEY', 'test_key'):
+        with patch.object(Config, 'GROQ_API_KEY', 'test_key'):
             with patch.object(Config, 'DEFAULT_PROVIDER', 'invalid'):
                 errors = Config.validate_config()
                 assert len(errors) > 0

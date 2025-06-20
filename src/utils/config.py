@@ -18,18 +18,21 @@ class Config:
     APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
-    # API Configuration (Phase 1)
+    # Phase 1: Mistral API for OCR
     MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
     MISTRAL_BASE_URL = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
     MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "pixtral-12b-2409")
 
-    # API Configuration (Phase 2, not implemented yet)
+    # Phase 2: AI Agents API Configuration
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "groq")
     FALLBACK_PROVIDER = os.getenv("FALLBACK_PROVIDER", "gemini")
 
-     # OCR Settings
+    # AI Features Toggle
+    ENABLE_AI_AGENTS = os.getenv("ENABLE_AI_AGENTS", "true").lower() == "true"
+
+    # OCR Settings
     OCR_MAX_IMAGE_SIZE = int(os.getenv("OCR_MAX_IMAGE_SIZE", "2048"))  # Max width/height in pixels
     OCR_DPI = int(os.getenv("OCR_DPI", "300"))  # DPI for PDF to image conversion
     OCR_TIMEOUT = int(os.getenv("OCR_TIMEOUT", "30"))  # Request timeout in seconds
@@ -68,16 +71,14 @@ class Config:
         """Validate configuration and return list of errors"""
         errors = []
 
-        # Phase 1: Only validate Mistral for OCR
-        if not cls.MISTRAL_API_KEY:
-            errors.append("MISTRAL_API_KEY must be provided for OCR functionality.")
+        # Phase 1: OCR validation (optional)
+        if cls.MISTRAL_API_KEY and not cls.MISTRAL_BASE_URL:
+            errors.append("MISTRAL_BASE_URL must be provided when MISTRAL_API_KEY is set.")
 
-        # Phase 2: Only validate if we're using AI agents
-        phase2_enabled = os.getenv("ENABLE_AI_AGENTS", "false").lower() == "true"
-        
-        if phase2_enabled:
+        # Phase 2: AI agents validation (only if enabled)
+        if cls.ENABLE_AI_AGENTS:
             if not cls.GROQ_API_KEY and not cls.GEMINI_API_KEY:
-                errors.append("At least one AI API key (Groq or Gemini) must be provided for Phase 2.")
+                errors.append("At least one AI API key (GROQ_API_KEY or GEMINI_API_KEY) must be provided when AI agents are enabled.")
 
             if cls.DEFAULT_PROVIDER not in ["groq", "gemini"]:
                 errors.append("DEFAULT_PROVIDER must be either 'groq' or 'gemini'.")
@@ -85,11 +86,22 @@ class Config:
             if cls.FALLBACK_PROVIDER not in ["groq", "gemini"]:
                 errors.append("FALLBACK_PROVIDER must be either 'groq' or 'gemini'.")
 
+            # Validate that the default provider has an API key
+            if cls.DEFAULT_PROVIDER == "groq" and not cls.GROQ_API_KEY:
+                errors.append("GROQ_API_KEY is required when DEFAULT_PROVIDER is 'groq'.")
+            
+            if cls.DEFAULT_PROVIDER == "gemini" and not cls.GEMINI_API_KEY:
+                errors.append("GEMINI_API_KEY is required when DEFAULT_PROVIDER is 'gemini'.")
+
+        # General validation
         if cls.LOG_FORMAT not in ["console", "json"]:
             errors.append("LOG_FORMAT must be either 'console' or 'json'.")
 
         if cls.OCR_DPI < 150 or cls.OCR_DPI > 600:
             errors.append("OCR_DPI must be between 150 and 600 for optimal results.")
+
+        if cls.MAX_TOKENS_PER_REQUEST < 100 or cls.MAX_TOKENS_PER_REQUEST > 8000:
+            errors.append("MAX_TOKENS_PER_REQUEST must be between 100 and 8000.")
 
         return errors
     
@@ -107,3 +119,15 @@ class Config:
 
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
+
+    @classmethod
+    def get_ai_status(cls) -> dict:
+        """Get AI configuration status"""
+        return {
+            "ai_enabled": cls.ENABLE_AI_AGENTS,
+            "groq_configured": bool(cls.GROQ_API_KEY),
+            "gemini_configured": bool(cls.GEMINI_API_KEY),
+            "default_provider": cls.DEFAULT_PROVIDER,
+            "fallback_provider": cls.FALLBACK_PROVIDER,
+            "has_any_ai_key": bool(cls.GROQ_API_KEY or cls.GEMINI_API_KEY)
+        }
