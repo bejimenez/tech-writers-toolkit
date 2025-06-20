@@ -1,169 +1,157 @@
-# Getting Started
+# User Guide - Application Overview
 
-This guide will help you set up and run the Technical Writing Assistant on your system.
+## Introduction
 
-## System Requirements
+The Technical Writing Assistant is a desktop application designed to help technical writers improve their documentation through AI-powered review processes. The system combines document processing capabilities with specialized AI agents to analyze different aspects of technical documents.
 
-- **Operating System**: Windows 10+, macOS 10.14+, or Linux
-- **Python**: Version 3.8 or higher
-- **Memory**: At least 4GB RAM recommended
-- **Storage**: 500MB for application and dependencies
+## Current Features (Phase 1 Complete + Phase 2 Steps 1-2)
 
-## Installation
+### Document Processing
+- **Multi-format Support**: PDF (text and scanned), TXT, and DOCX files
+- **OCR Processing**: Handles scanned documents using Mistral Vision API
+- **Intelligent Processing**: Automatically chooses best extraction method
+- **Session Tracking**: Database storage of all processing sessions
 
-### Method 1: Automated Setup (Recommended)
+### AI Review System
+- **Technical Agent**: Analyzes technical accuracy, safety issues, and completeness
+- **LLM Integration**: Supports Groq and Gemini APIs with fallback
+- **Rule-based Fallback**: Works even without AI API keys
+- **Structured Findings**: Categorized issues with severity levels and suggestions
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/bejimenez/tech-writers-toolkit.git
-   cd tech-writers-toolkit
-   ```
+### User Interface
+- **Modern Desktop App**: Built with Flet framework
+- **Navigation**: Home, Review, and Settings views
+- **Real-time Progress**: Visual feedback during processing
+- **Results Display**: Comprehensive review results with export options
 
-2. **Run the setup script**
-   ```bash
-   python setup_project.py
-   ```
-   
-   This will:
-   - Create the complete project structure
-   - Install all Python dependencies
-   - Set up configuration files
-   - Create necessary directories
+## Quick Start
 
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit the `.env` file with your settings:
-   ```bash
-   # Optional: Add API keys for Phase 2
-   GROQ_API_KEY=your_groq_api_key_here
-   GEMINI_API_KEY=your_gemini_api_key_here
-   
-   # Application settings
-   LOG_LEVEL=INFO
-   DEBUG=true
-   ```
+1. **Login**: Use any username/password combination
+2. **Upload Document**: Navigate to Review tab and upload a document
+3. **Review Results**: View processing results and document analysis
+4. **AI Review**: Click "Start AI Review" to get detailed technical feedback
 
-### Method 2: Manual Setup
+## Authentication
 
-1. **Create project structure**
-   ```bash
-   mkdir -p src/ui/views src/ui/components src/document src/agents src/ai src/utils
-   mkdir -p data/reviews data/templates logs tests docs
-   ```
+Currently uses simplified authentication for development:
+- Any username/password combination will work
+- Session management included for future enhancement
+- User context preserved throughout application
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Document Upload
 
-3. **Copy configuration files**
-   ```bash
-   cp .env.example .env
-   ```
+### Supported Formats
+- **PDF**: Both text-based and scanned documents
+- **TXT**: Plain text files
+- **DOCX**: Microsoft Word documents
 
-## First Run
+### Upload Methods
+- Drag and drop files onto upload area
+- Click "Browse Files" to select documents
+- File validation with size limits (50MB max)
 
-1. **Start the application**
-   ```bash
-   python src/main.py
-   ```
+### Processing Options
+- **Auto-detect**: System chooses best processing method
+- **Force OCR**: Override for testing OCR on readable PDFs
+- **Session Tracking**: All uploads tracked in database
 
-2. **Login**
-   - Username: any value (e.g., "admin")
-   - Password: any value (e.g., "password")
-   
-   *Note: Currently uses simplified authentication*
+## Review Results
 
-3. **Test document processing**
-   - Click "Review Document"
-   - Upload a PDF, TXT, or DOCX file
-   - Review the processing results
+### Document Information
+- Filename and file statistics
+- Page count and processing method
+- Text extraction quality indicators
+- Processing time and session ID
 
-## Verification
+### Text Preview
+- First 1000 characters of extracted text
+- Full text available for copy/paste
+- Character count and extraction statistics
 
-### Check System Status
+### AI Review Features
+- **Technical Analysis**: Safety, accuracy, and completeness checks
+- **Severity Levels**: Error, Warning, and Info classifications
+- **Location References**: Specific document sections identified
+- **Improvement Suggestions**: Actionable recommendations
 
-In the application:
-1. Go to **Home** → **System Status**
-2. Verify all services show green checkmarks:
-   - Document Processing: Ready
-   - AI Services: Connected (may show disconnected in Phase 1)
-   - Database: Online
+## Navigation
 
-### Test Document Processing
+### Home View
+- Quick action buttons for common tasks
+- System status indicators
+- Recent review access
 
-1. Navigate to **Review** tab
-2. Upload a sample document
-3. Verify successful processing and text extraction
+### Review View
+- AI status and connection testing
+- Document upload and processing
+- Results display and export options
+- Session history access
 
-### Check Logs
+### Settings View
+- Application configuration options
+- Theme and display preferences
+- System information display
 
-View application logs:
-```bash
-tail -f logs/app.log
-```
+## AI Features
 
-Look for successful startup messages and no error entries.
+### Connection Testing
+- Test individual providers (Groq, Gemini)
+- Verify API connectivity
+- Response time measurement
+- Sample response display
+
+### Provider Configuration
+- Primary and fallback providers
+- Automatic failover between services
+- Cost-effective model selection
+- Rate limiting and optimization
+
+## Session Management
+
+### Processing Sessions
+- Unique session ID for each document
+- Processing method tracking
+- Time and status recording
+- User attribution
+
+### Review History
+- Recent processing sessions display
+- Status and timing information
+- Session retrieval by ID
+- Processing method comparison
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Application won't start**
-```bash
-# Check Python version
-python --version  # Should be 3.8+
+**AI Features Disabled**
+- Verify API keys in .env file
+- Check connection with test buttons
+- Review logs for authentication errors
 
-# Check dependencies
-pip install -r requirements.txt
-
-# Check logs
-cat logs/app.log
-```
-
-**OCR not working**
-```bash
-# Test Tesseract installation
-tesseract --version
-
-# Install if missing (Ubuntu/Debian)
-sudo apt install tesseract-ocr
-
-# Install if missing (macOS)
-brew install tesseract
-```
-
-**File upload fails**
-- Ensure file is under 50MB
-- Verify file format (PDF, TXT, DOCX only)
+**File Upload Failures**
+- Ensure file size under 50MB
+- Verify supported format
 - Check file permissions
 
-### Debug Mode
-
-Enable debug logging in `.env`:
-```bash
-DEBUG=true
-LOG_LEVEL=DEBUG
-```
-
-This provides detailed information about application behavior.
+**OCR Processing Issues**
+- Confirm Mistral API key configuration
+- Test with "Force OCR" option
+- Review OCR-specific logs
 
 ### Getting Help
+- Check application logs in `logs/app.log`
+- Use debug mode for detailed information
+- Reference error messages for specific issues
 
-If you encounter issues:
+## What's Coming Next
 
-1. Check the [troubleshooting section](user-guide/troubleshooting.md)
-2. Review logs in `logs/app.log`
-3. Create an issue on GitHub with:
-   - Error message
-   - Log entries
-   - System information
+### Phase 2 Completion (In Progress)
+- **Multi-Agent System**: Brand, formatting, and diagram reviewers
+- **Advanced Analysis**: Comprehensive document evaluation
+- **Report Generation**: Detailed review reports with recommendations
 
-## Next Steps
-
-- Read the [User Guide](user-guide/first-review.md) for detailed usage instructions
-- Explore the [Architecture](architecture/overview.md) to understand the system design
-- Learn about [Development](development/contributing.md) if you want to contribute
+### Future Features
+- **Export Capabilities**: PDF reports and structured data
+- **Collaborative Reviews**: Multi-user feedback systems
+- **Integration Options**: API access and external tool connections
