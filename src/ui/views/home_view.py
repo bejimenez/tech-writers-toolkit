@@ -28,7 +28,7 @@ class HomeView:
                 ),
                 ft.NavigationRailDestination(
                     icon="reviews",
-                    selected_icon="reviews",
+                    selected_icon="description",
                     label="Review",
                 ),
                 ft.NavigationRailDestination(

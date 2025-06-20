@@ -128,6 +128,12 @@ class ReviewView(LoggerMixin):
             accepted_extensions=['.pdf', '.txt', '.docx']
         )
         
+        # OCR force option
+        self.force_ocr_checkbox = ft.Checkbox(
+            label="Force OCR (for testing OCR on readable PDFs)",
+            value=False
+        )
+        
         self.progress_bar = ft.ProgressBar(
             width=400,
             visible=False
@@ -163,6 +169,7 @@ class ReviewView(LoggerMixin):
                                     weight=ft.FontWeight.BOLD
                                 ),
                                 self.file_uploader.build(),
+                                self.force_ocr_checkbox,
                                 self.progress_bar,
                                 self.status_text,
                             ],
@@ -415,11 +422,14 @@ class ReviewView(LoggerMixin):
             self.app.page.update()
         
         try:
-            # Pass user_id to document processor
+            # Pass user_id and force_ocr option to document processor
             user_id = self.app.current_user or "anonymous"
+            force_ocr = self.force_ocr_checkbox.value if self.force_ocr_checkbox else False
+            
             self.current_document = self.document_processor.process_document(
                 file_path, 
-                user_id=user_id
+                user_id=user_id,
+                force_ocr=force_ocr
             )
             self._show_processing_results()
             
