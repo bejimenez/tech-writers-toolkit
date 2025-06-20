@@ -55,7 +55,7 @@ class GroqProvider(LLMProvider):
         """Generate response using Groq API."""
 
         payload = {
-            "model": "llama-3.1-70b-versatile",  # Updated to working model
+            "model": "llama3-70b-8192",  # Updated to working model
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens or Config.MAX_TOKENS_PER_REQUEST,
             "temperature": temperature
