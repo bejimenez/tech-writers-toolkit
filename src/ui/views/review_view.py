@@ -41,7 +41,11 @@ class ReviewView(LoggerMixin):
                 Config.GEMINI_API_KEY is not None)
     
     def build(self) -> ft.Control:
-        """Build the review view"""
+        """Build the review view with escape key handler"""
+
+        # Add keyboard handler for escape key
+        if self.app.page:
+            self.app.page.on_keyboard_event = self._on_keyboard_event
         
         # Navigation rail
         nav_rail = ft.NavigationRail(
@@ -91,7 +95,11 @@ class ReviewView(LoggerMixin):
             expand=True,
             spacing=0
         )
-    
+    def _on_keyboard_event(self, e):
+        """Handle keyboard events for escape key"""
+        if e.key == "Escape":
+            self._clear_all_dialogs()
+            
     def _build_header(self) -> ft.Control:
         """Build the header section"""
         return ft.Container(
@@ -302,9 +310,8 @@ class ReviewView(LoggerMixin):
     
     def _show_ai_test_dialog(self, message: str):
         """Show AI test in progress dialog"""
-        # Clear any existing dialogs first
-        if self.app.page and hasattr(self.app.page, 'overlay'):
-            self.app.page.overlay.clear()
+
+        self._clear_all_dialogs()  # Clear any existing dialogs
         
         dialog = ft.AlertDialog(
             title=ft.Text("AI Connection Test"),
@@ -314,7 +321,9 @@ class ReviewView(LoggerMixin):
                     ft.Text(message)
                 ],
                 spacing=15
-            )
+            ),
+            # Remove modal behavior that might cause issues
+            modal=False
         )
         
         if self.app.page and hasattr(self.app.page, 'overlay'):
@@ -325,8 +334,7 @@ class ReviewView(LoggerMixin):
     def _show_ai_test_results(self, results: dict):
         """Show AI test results dialog"""
         # Close any existing dialogs
-        if self.app.page and hasattr(self.app.page, 'overlay'):
-            self.app.page.overlay.clear()
+        self._clear_all_dialogs()
         
         # Build results content
         results_content = []
@@ -377,13 +385,19 @@ class ReviewView(LoggerMixin):
             content=ft.Container(
                 content=ft.Column(
                     results_content,
-                    spacing=10
+                    spacing=10,
+                    scroll=ft.ScrollMode.AUTO
                 ),
-                width=500
+                width=500,
+                height=300  # Set max height to prevent overflow
             ),
             actions=[
-                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
-            ]
+                ft.TextButton(
+                    "Close", 
+                    on_click=lambda _: self._close_dialog(dialog)
+                )
+            ],
+            modal=False  # Remove modal behavior
         )
         
         if self.app.page and hasattr(self.app.page, 'overlay'):
@@ -394,15 +408,15 @@ class ReviewView(LoggerMixin):
     def _show_error_dialog(self, message: str):
         """Show error dialog"""
         # Close any existing dialogs
-        if self.app.page and hasattr(self.app.page, 'overlay'):
-            self.app.page.overlay.clear()
+        self._clear_all_dialogs()
         
         dialog = ft.AlertDialog(
             title=ft.Text("Error"),
             content=ft.Text(message),
             actions=[
                 ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog))
-            ]
+            ],
+            modal=False  # Remove modal behavior
         )
         
         if self.app.page and hasattr(self.app.page, 'overlay'):
@@ -660,8 +674,7 @@ Provide a short response (under 100 words) about the document's general quality.
     def _show_ai_review_test_results(self, response: str):
         """Show AI review test results"""
         # Close any existing dialogs
-        if self.app.page and hasattr(self.app.page, 'overlay'):
-            self.app.page.overlay.clear()
+        self._clear_all_dialogs()
         
         dialog = ft.AlertDialog(
             title=ft.Text("AI Review Test Results"),
@@ -690,13 +703,19 @@ Provide a short response (under 100 words) about the document's general quality.
                             weight=ft.FontWeight.BOLD
                         )
                     ],
-                    spacing=10
+                    spacing=10,
+                    scroll=ft.ScrollMode.AUTO
                 ),
-                width=550
+                width=550,
+                height=400  # Set max height
             ),
             actions=[
-                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
-            ]
+                ft.TextButton(
+                    "Close", 
+                    on_click=lambda _: self._close_dialog(dialog)
+                )
+            ],
+            modal=False  # Remove modal behavior
         )
         
         if self.app.page and hasattr(self.app.page, 'overlay'):
@@ -722,10 +741,34 @@ Provide a short response (under 100 words) about the document's general quality.
 
     def _close_dialog(self, dialog):
         """Close any open dialog"""
-        dialog.open = False
-        if self.app.page and hasattr(self.app.page, 'overlay') and dialog in self.app.page.overlay:
-            self.app.page.overlay.remove(dialog)
-            self.app.page.update()
+        try:
+            dialog.open = False
+            if self.app.page and hasattr(self.app.page, 'overlay'):
+                # Remove the specific dialog from overlay
+                if dialog in self.app.page.overlay:
+                    self.app.page.overlay.remove(dialog)
+                self.app.page.update()
+        except Exception as e:
+            self.logger.error("Error closing dialog", error=str(e))
+            # Force clear all overlays if there's an issue
+            if self.app.page and hasattr(self.app.page, 'overlay'):
+                self.app.page.overlay.clear()
+                self.app.page.update()
+
+    def _clear_all_dialogs(self):
+        """Force clear all dialogs and overlays"""
+        try:
+            if self.app.page and hasattr(self.app.page, 'overlay'):
+                # Close all open dialogs first
+                for overlay_item in self.app.page.overlay[:]:
+                    # Only close if it's an AlertDialog
+                    if isinstance(overlay_item, ft.AlertDialog):
+                        overlay_item.open = False
+                # Clear the overlay list
+                self.app.page.overlay.clear()
+                self.app.page.update()
+        except Exception as e:
+            self.logger.error("Error clearing dialogs", error=str(e))
     
     def _reset_view(self, e):
         """Reset the view to upload a new document"""
