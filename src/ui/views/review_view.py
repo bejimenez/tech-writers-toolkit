@@ -2,10 +2,12 @@
 import flet as ft
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+
 from src.ui.components.file_uploader import FileUploader
 from src.document.processor import DocumentProcessor
 from src.utils.logger import LoggerMixin
 from src.utils.config import Config
+from src.utils.export_utils import ReviewExporter
 
 if TYPE_CHECKING:
     from ui.app import TechnicalWritingApp
@@ -18,6 +20,7 @@ class ReviewView(LoggerMixin):
         self.document_processor = DocumentProcessor()
         self.current_document = None
         self.review_results = None
+        self.exporter = ReviewExporter()
         
         # Initialize LLM manager if AI is enabled
         self.llm_manager = None
@@ -548,14 +551,15 @@ class ReviewView(LoggerMixin):
                             disabled=not ai_review_available
                         ),
                         ft.ElevatedButton(
+                            "Export Results",
+                            icon="download",
+                            on_click=self._export_results,
+                            tooltip="Export document processing results"
+                        ),
+                        ft.ElevatedButton(
                             "View Session History",
                             icon="history",
                             on_click=self._view_session_history
-                        ),
-                        ft.ElevatedButton(
-                            "Export Results",
-                            icon="download",
-                            on_click=self._export_results
                         ),
                         ft.ElevatedButton(
                             "Process Another Document",
@@ -762,17 +766,15 @@ class ReviewView(LoggerMixin):
             self.app.page.update()
     
     def _export_agent_report(self, review_result):
-        """Export agent review report (placeholder)"""
-        # For now, just show a confirmation
-        self._show_info_dialog(
-            "Export Report",
-            f"Report export functionality will be implemented soon.\n\n"
-            f"Report would include:\n"
-            f"- {len(review_result.findings)} findings\n"
-            f"- Results from {len(review_result.agent_results)} agent(s)\n"
-            f"- Processing time: {review_result.total_processing_time:.2f}s"
-        )
-    
+        """Export agent review report"""
+        self._clear_all_dialogs()
+
+        # Store review results for export
+        self.review_results = review_result
+
+        # Show format selection dialog
+        self._show_export_format_dialog()
+
     def _show_info_dialog(self, title: str, message: str):
         """Show informational dialog"""
         dialog = ft.AlertDialog(
@@ -843,20 +845,181 @@ class ReviewView(LoggerMixin):
             self._show_error_dialog(f"Failed to load session history: {str(e)}")
 
     def _export_results(self, e):
-        """Export processing results"""
+        """Export processing results with format selection"""
         if not self.current_document:
+            self._show_error_dialog("No document to export")
             return
-        dialog = ft.AlertDialog(
-            title=ft.Text("Export Results"),
-            content=ft.Text("Export functionality will be implemented soon."),
-            actions=[
-                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog))
-            ]
+        
+        # show format selection dialog
+        self._show_export_format_dialog()
+
+    def _show_export_format_dialog(self):
+        """Show dialog to select export format"""
+        self._clear_all_dialogs()
+
+        format_buttons = []
+
+        # JSON export button
+        json_btn = ft.ElevatedButton(
+            "Export as JSON",
+            icon="code",
+            on_click=lambda _: self._perform_export("json"),
+            tooltip="Export results in a structured JSON format"
         )
+        format_buttons.append(json_btn)
+
+        # Text Export Button
+        txt_btn = ft.ElevatedButton(
+            "Export as Text Report",
+            icon="description",
+            on_click=lambda _: self._perform_export("txt"),  # FIX: use 'txt' not 'text'
+            tooltip="Export results as a human-readable text report"
+        )
+        format_buttons.append(txt_btn)
+
+        # HTML export button
+        html_btn = ft.ElevatedButton(
+            "Export as HTML Report",
+            icon="web",
+            on_click=lambda _: self._perform_export("html"),
+            tooltip="Export results as a formatted HTML report"
+        )
+        format_buttons.append(html_btn)
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Select Export Format"),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text(
+                        "Choose the format for exporting your review results:",
+                        size=14
+                    ),
+                    ft.Container(height=10),
+                    ft.Column(format_buttons, spacing=10)
+                ]),
+                width=300
+            ),
+            actions=[
+                ft.TextButton(
+                    "Cancel",
+                    on_click=lambda _: self._close_dialog(dialog)
+                )
+            ],
+            modal=False
+        )
+        
         if self.app.page and hasattr(self.app.page, 'overlay'):
             dialog.open = True
             self.app.page.overlay.append(dialog)
             self.app.page.update()
+
+    def _perform_export(self, format_type: str):
+        """Perform the actual export operation"""
+        self._clear_all_dialogs()
+        
+        # Show progress
+        progress_dialog = ft.AlertDialog(
+            title=ft.Text("Exporting..."),
+            content=ft.Row([
+                ft.ProgressRing(width=30, height=30),
+                ft.Text(f"Exporting as {format_type.upper()}...")
+            ], spacing=15),
+            modal=False
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            progress_dialog.open = True
+            self.app.page.overlay.append(progress_dialog)
+            self.app.page.update()
+        
+        try:
+            # Ensure current_document is not None before exporting
+            if self.current_document is None:
+                self._close_dialog(progress_dialog)
+                self._show_error_dialog("No document loaded to export.")
+                return
+
+            # Perform export
+            exported_path = self.exporter.export_review_results(
+                self.current_document,
+                self.review_results,
+                format_type
+            )
+            
+            # Close progress dialog
+            self._close_dialog(progress_dialog)
+            
+            if exported_path:
+                # Show success dialog
+                self._show_export_success_dialog(exported_path, format_type)
+            else:
+                self._show_error_dialog("Export was cancelled or failed")
+            
+        except Exception as e:
+            self.logger.error("Export operation failed", error=str(e))
+            self._close_dialog(progress_dialog)
+            self._show_error_dialog(f"Export failed: {str(e)}")
+
+    def _show_export_success_dialog(self, exported_path: Path, format_type: str):
+        """Show export success confirmation"""
+        dialog = ft.AlertDialog(
+            title=ft.Text("Export Successful"),
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon("check_circle", color="green"),
+                    ft.Text("Review results exported successfully!")
+                ]),
+                ft.Container(height=10),
+                ft.Text(f"Format: {format_type.upper()}", weight=ft.FontWeight.BOLD),
+                ft.Text(f"Location: {exported_path}", size=12, color="outline"),
+                ft.Container(height=10),
+                ft.Row([
+                    ft.ElevatedButton(
+                        "Open File Location",
+                        icon="folder_open",
+                        on_click=lambda _: self._open_file_location(exported_path)
+                    ),
+                    ft.ElevatedButton(
+                        "Export Another Format",
+                        icon="download",
+                        on_click=lambda _: self._export_another_format(dialog)
+                    )
+                ], spacing=10)
+            ], spacing=5),
+            actions=[
+                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog))
+            ],
+            modal=False
+        )
+        
+        if self.app.page and hasattr(self.app.page, 'overlay'):
+            dialog.open = True
+            self.app.page.overlay.append(dialog)
+            self.app.page.update()
+    
+    def _open_file_location(self, file_path: Path):
+        """Open file location in system file manager"""
+        try:
+            import subprocess
+            import sys
+            
+            if sys.platform == "win32":
+                subprocess.run(["explorer", "/select,", str(file_path)])
+            elif sys.platform == "darwin":  # macOS
+                subprocess.run(["open", "-R", str(file_path)])
+            else:  # Linux
+                subprocess.run(["xdg-open", str(file_path.parent)])
+            
+            self.logger.info("Opened file location", path=str(file_path))
+            
+        except Exception as e:
+            self.logger.error("Failed to open file location", error=str(e))
+            self._show_error_dialog("Could not open file location")
+    
+    def _export_another_format(self, current_dialog):
+        """Close current dialog and show format selection again"""
+        self._close_dialog(current_dialog)
+        self._show_export_format_dialog()
 
     def _close_dialog(self, dialog):
         """Close any open dialog"""

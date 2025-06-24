@@ -66,6 +66,11 @@ class Config:
     TEMPLATES_DIR = BASE_DIR / "templates"
     KNOWLEDGE_DIR = BASE_DIR / "knowledge"
 
+    # Export settings
+    DEFAULT_EXPORT_FORMAT = os.getenv("DEFAULT_EXPORT_FORMAT", "json")
+    EXPORT_INCLUDE_FULL_TEXT = os.getenv("EXPORT_INCLUDE_FULL_TEXT", "false").lower() == "true"
+    EXPORT_MAX_TEXT_PREVIEW = int(os.getenv("EXPORT_MAX_TEXT_PREVIEW", "1000"))
+
     @classmethod
     def validate_config(cls) -> list[str]:
         """Validate configuration and return list of errors"""
