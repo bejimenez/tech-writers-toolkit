@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from src.utils.logger import LoggerMixin
 from src.agents.base_agent import ReviewContext
 from src.agents.technical_agent import TechnicalAgent
+from src.agents.diagram_agent import DiagramAgent
 from src.storage.models import AgentFinding, DatabaseManager
 from src.document.processor import ProcessedContent
 
@@ -37,6 +38,8 @@ class AgentManager(LoggerMixin):
             # Initialize Technical Agent
             self.agents["technical"] = TechnicalAgent()
             self.logger.info("Technical Agent initialized")
+            self.agents["diagram"] = DiagramAgent()
+            self.logger.info("Diagram Agent initialized")
             
         except Exception as e:
             self.logger.error("Failed to initialize agents", error=str(e))
