@@ -256,23 +256,47 @@ class TechnicalAgent(BaseReviewAgent):
         return findings
     
     def _check_measurement_issues(self, text: str, session_id: int) -> List[AgentFinding]:
-        """Check for measurement and specification issues"""
+        """Check for basic measurement specification issues (Technical focus)"""
         findings = []
         
-        # Look for measurements without units
-        measurement_pattern = r'\b\d+\.?\d*\s*(?!mm|cm|inch|in\b|ft\b|meter|gauge|awg)'
-        matches = re.findall(measurement_pattern, text)
+        # Technical Agent should focus on missing specifications, not formatting
+        # Formatting Agent will handle conversion accuracy and format compliance
         
-        if len(matches) > 3:  # Multiple measurements without units
+        # Check for measurements that lack any specification
+        # Look for standalone numbers that might need units
+        standalone_numbers = re.findall(r'\b\d+\.?\d*\s+(?:drill|hole|screw|wire|cable|distance|clearance|depth|width|height)', text.lower())
+        
+        if len(standalone_numbers) > 2:
             findings.append(self.create_finding(
                 session_id=session_id,
-                severity="warning",
-                category="measurements",
-                description="Multiple measurements found without units specified",
+                severity="warning", 
+                category="specifications",
+                description="Multiple measurements found that may lack proper unit specifications",
                 location="Throughout document",
-                suggestion="Ensure all measurements include appropriate units (mm, inches, etc.)",
+                suggestion="Ensure all measurements include appropriate units (inches with metric conversions)",
                 confidence=0.6
             ))
+        
+        # Check for critical measurements without specifications in installation context
+        critical_measurement_contexts = [
+            'mounting height', 'clearance', 'wire gauge', 'voltage drop'
+        ]
+        
+        for context in critical_measurement_contexts:
+            if context in text.lower():
+                # Check if there's a number nearby without units
+                context_pattern = rf'{context}.*?(\d+\.?\d*)\s*(?!["\[\(])'
+                matches = re.findall(context_pattern, text.lower())
+                if matches:
+                    findings.append(self.create_finding(
+                        session_id=session_id,
+                        severity="warning",
+                        category="specifications", 
+                        description=f"Critical measurement context '{context}' may lack proper specifications",
+                        location=f"Section mentioning {context}",
+                        suggestion="Ensure critical measurements include both imperial and metric units",
+                        confidence=0.7
+                    ))
         
         return findings
     
