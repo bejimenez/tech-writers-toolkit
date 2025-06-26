@@ -600,7 +600,7 @@ class ReviewView(LoggerMixin):
             # Start the review process
             review_result = agent_manager.start_review(
                 self.current_document,
-                agents_to_use=["technical", "diagram"]  # Current version uses technical and diagram agents only
+                agents_to_use=["technical", "diagram", "formatting"]  # Current version uses technical, diagram, formatting agents only
             )
             
             # Show results
