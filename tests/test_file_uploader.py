@@ -188,3 +188,135 @@ class TestFileUploader:
             # Should restore normal colors
             assert self.uploader._upload_area.bgcolor == "primary_container"
             assert self.uploader._upload_area.border.top.width == 2
+    
+    def test_drag_drop_handlers_setup(self):
+        """Test that drag and drop handlers are set up correctly"""
+        self.uploader.build()
+        
+        # Should have drag and drop event handlers
+        event_handlers = self.uploader._upload_area.event_handlers
+        assert 'dragover' in event_handlers
+        assert 'dragenter' in event_handlers
+        assert 'dragleave' in event_handlers
+        assert 'drop' in event_handlers
+        
+        # Handlers should not be None
+        assert event_handlers['dragover'] is not None
+        assert event_handlers['dragenter'] is not None
+        assert event_handlers['dragleave'] is not None
+        assert event_handlers['drop'] is not None
+    
+    def test_drag_enter_handler(self):
+        """Test drag enter visual feedback"""
+        self.uploader.build()
+        mock_event = Mock()
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        with patch.object(self.uploader._upload_area, 'update'):
+            self.uploader._on_drag_enter(mock_event)
+            
+            # Should change to drag state colors
+            assert self.uploader._upload_area.bgcolor == "secondary_container"
+            assert self.uploader._upload_area.border.top.width == 3
+            assert self.uploader._upload_area.border.top.color == "secondary"
+    
+    def test_drag_leave_handler(self):
+        """Test drag leave restores normal appearance"""
+        self.uploader.build()
+        mock_event = Mock()
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        with patch.object(self.uploader._upload_area, 'update'):
+            self.uploader._on_drag_leave(mock_event)
+            
+            # Should restore normal colors
+            assert self.uploader._upload_area.bgcolor == "primary_container"
+            assert self.uploader._upload_area.border.top.width == 2
+            assert self.uploader._upload_area.border.top.color == "primary"
+    
+    def test_drop_handler_with_string_data(self):
+        """Test drop handler with string file path"""
+        self.uploader.build()
+        mock_event = Mock()
+        mock_event.data = "/test/path/document.pdf"
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        
+        with patch.object(self.uploader._upload_area, 'update'):
+            with patch.object(self.uploader, '_validate_and_process_file') as mock_validate:
+                self.uploader._on_drop(mock_event)
+                
+                # Should process the dropped file
+                mock_validate.assert_called_once_with(Path("/test/path/document.pdf"))
+    
+    def test_drop_handler_with_list_data(self):
+        """Test drop handler with list of file paths"""
+        self.uploader.build()
+        mock_event = Mock()
+        mock_event.data = ["/test/path/document.pdf", "/test/path/other.txt"]
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        
+        with patch.object(self.uploader._upload_area, 'update'):
+            with patch.object(self.uploader, '_validate_and_process_file') as mock_validate:
+                self.uploader._on_drop(mock_event)
+                
+                # Should process the first file only
+                mock_validate.assert_called_once_with(Path("/test/path/document.pdf"))
+    
+    def test_drop_handler_with_file_objects(self):
+        """Test drop handler with file objects"""
+        self.uploader.build()
+        mock_event = Mock()
+        mock_file = Mock()
+        mock_file.path = "/test/path/document.pdf"
+        mock_event.data = Mock()
+        mock_event.data.files = [mock_file]
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        
+        with patch.object(self.uploader._upload_area, 'update'):
+            with patch.object(self.uploader, '_validate_and_process_file') as mock_validate:
+                self.uploader._on_drop(mock_event)
+                
+                # Should process the dropped file
+                mock_validate.assert_called_once_with(Path("/test/path/document.pdf"))
+    
+    def test_drop_handler_with_no_data(self):
+        """Test drop handler when no file data is available"""
+        self.uploader.build()
+        mock_event = Mock()
+        mock_event.data = None
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        
+        with patch.object(self.uploader._upload_area, 'update'):
+            with patch.object(self.uploader, '_show_error') as mock_show_error:
+                self.uploader._on_drop(mock_event)
+                
+                # Should show error message
+                mock_show_error.assert_called_once()
+                assert "file data not available" in mock_show_error.call_args[0][0].lower()
+    
+    def test_drop_handler_with_invalid_data(self):
+        """Test drop handler with invalid data format"""
+        self.uploader.build()
+        mock_event = Mock()
+        mock_event.data = {"invalid": "data"}  # Invalid format
+        
+        # Mock page to avoid update issues
+        self.uploader._upload_area.page = Mock()
+        
+        with patch.object(self.uploader._upload_area, 'update'):
+            with patch.object(self.uploader, '_show_error') as mock_show_error:
+                self.uploader._on_drop(mock_event)
+                
+                # Should show error message
+                mock_show_error.assert_called_once()
+                assert "no valid files found" in mock_show_error.call_args[0][0].lower()

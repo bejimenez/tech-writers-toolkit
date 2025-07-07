@@ -1,5 +1,5 @@
 # bugs
-- drag and drop file into the review does not work
+- ~~drag and drop file into the review does not work~~ ✅ FIXED
 - modal windows not closing completely in review view, there's an overlay that you need to click to get back to the review page
 
 # features
