@@ -26,15 +26,16 @@ class FileUploader:
     def build(self):
         """Build the file uploader component"""
         
-        # Upload area
+        # Upload area - make entire area clickable for better UX and add drag/drop support
         self._upload_area = ft.Container(
             content=ft.Column(
                 [
                     ft.Icon(name="cloud_upload", size=48, color="primary"),
                     ft.Text(
-                        "Drop your document here or click to browse",
+                        "Click here or drag and drop your document",
                         size=16,
-                        text_align=ft.TextAlign.CENTER
+                        text_align=ft.TextAlign.CENTER,
+                        weight=ft.FontWeight.BOLD
                     ),
                     ft.Text(
                         f"Supported formats: {', '.join(self.accepted_extensions)}",
@@ -42,10 +43,12 @@ class FileUploader:
                         color="outline",
                         text_align=ft.TextAlign.CENTER
                     ),
-                    ft.ElevatedButton(
-                        "Browse Files",
-                        icon="folder_open",
-                        on_click=self._on_browse_click
+                    ft.Text(
+                        "Drag files here or click anywhere to browse",
+                        size=11,
+                        color="outline",
+                        text_align=ft.TextAlign.CENTER,
+                        style=ft.TextStyle(italic=True)
                     )
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -57,7 +60,20 @@ class FileUploader:
             border_radius=10,
             padding=20,
             bgcolor="primary_container",
-            alignment=ft.alignment.center
+            alignment=ft.alignment.center,
+            on_click=self._on_browse_click,
+            on_hover=self._on_area_hover
+        )
+        
+        # Add HTML5 drag and drop event handlers
+        self._setup_drag_drop_handlers()
+        
+        return ft.Column(
+            [
+                self.file_picker,
+                self._upload_area
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
         
         return ft.Column(
@@ -67,6 +83,94 @@ class FileUploader:
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+    
+    def _setup_drag_drop_handlers(self):
+        """Setup HTML5 drag and drop event handlers"""
+        if self._upload_area:
+            # Add drag and drop event handlers
+            self._upload_area._add_event_handler("dragover", self._on_drag_over)
+            self._upload_area._add_event_handler("dragenter", self._on_drag_enter)
+            self._upload_area._add_event_handler("dragleave", self._on_drag_leave)
+            self._upload_area._add_event_handler("drop", self._on_drop)
+    
+    def _on_drag_over(self, e):
+        """Handle drag over event - prevent default to allow drop"""
+        # This event fires continuously while dragging over the element
+        # We need to prevent default to allow dropping
+        pass
+    
+    def _on_drag_enter(self, e):
+        """Handle drag enter event - visual feedback when drag enters"""
+        if self._upload_area:
+            self._upload_area.bgcolor = "secondary_container"
+            self._upload_area.border = ft.border.all(3, "secondary")
+            if hasattr(self._upload_area, 'update') and self._upload_area.page:
+                self._upload_area.update()
+    
+    def _on_drag_leave(self, e):
+        """Handle drag leave event - restore normal appearance"""
+        if self._upload_area:
+            self._upload_area.bgcolor = "primary_container"
+            self._upload_area.border = ft.border.all(2, "primary")
+            if hasattr(self._upload_area, 'update') and self._upload_area.page:
+                self._upload_area.update()
+    
+    def _on_drop(self, e):
+        """Handle file drop event"""
+        # Restore normal appearance
+        self._on_drag_leave(e)
+        
+        # Process dropped files
+        try:
+            # The event should contain file information
+            # Note: The exact structure of the event data may vary
+            # We'll need to handle this based on how Flet passes file information
+            if hasattr(e, 'data') and e.data:
+                # Try to extract file information from the event
+                self._process_dropped_files(e.data)
+            else:
+                # Fallback to file picker if drag data is not available
+                self._show_error("Drag and drop detected but file data not available. Please use click to browse.")
+        except Exception as ex:
+            self._show_error(f"Error processing dropped file: {str(ex)}")
+    
+    def _process_dropped_files(self, drop_data):
+        """Process files from drag and drop event"""
+        try:
+            # Handle different possible data formats
+            # This might need adjustment based on actual Flet implementation
+            files = []
+            
+            if isinstance(drop_data, str):
+                # Single file path
+                files = [drop_data]
+            elif isinstance(drop_data, list):
+                # Multiple files
+                files = drop_data
+            elif hasattr(drop_data, 'files'):
+                # Event with files property
+                files = [f.path if hasattr(f, 'path') else str(f) for f in drop_data.files]
+            
+            if files:
+                # Process the first file (since we only support single file upload)
+                file_path = Path(files[0])
+                self._validate_and_process_file(file_path)
+            else:
+                self._show_error("No valid files found in drop data")
+                
+        except Exception as e:
+            self._show_error(f"Error processing dropped files: {str(e)}")
+    
+    def _on_area_hover(self, e):
+        """Handle hover over upload area for visual feedback"""
+        if e.data == "true":  # Mouse entered
+            self._upload_area.bgcolor = "primary"
+            self._upload_area.border = ft.border.all(3, "on_primary")
+        else:  # Mouse left
+            self._upload_area.bgcolor = "primary_container"
+            self._upload_area.border = ft.border.all(2, "primary")
+        if hasattr(self._upload_area, 'update') and self._upload_area.page:
+            self._upload_area.update()
     
     def _on_browse_click(self, e):
         """Handle browse button click"""
