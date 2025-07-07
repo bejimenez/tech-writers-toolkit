@@ -26,15 +26,16 @@ class FileUploader:
     def build(self):
         """Build the file uploader component"""
         
-        # Upload area
+        # Upload area - make entire area clickable for better UX
         self._upload_area = ft.Container(
             content=ft.Column(
                 [
                     ft.Icon(name="cloud_upload", size=48, color="primary"),
                     ft.Text(
-                        "Drop your document here or click to browse",
+                        "Click here or drag and drop your document",
                         size=16,
-                        text_align=ft.TextAlign.CENTER
+                        text_align=ft.TextAlign.CENTER,
+                        weight=ft.FontWeight.BOLD
                     ),
                     ft.Text(
                         f"Supported formats: {', '.join(self.accepted_extensions)}",
@@ -42,10 +43,12 @@ class FileUploader:
                         color="outline",
                         text_align=ft.TextAlign.CENTER
                     ),
-                    ft.ElevatedButton(
-                        "Browse Files",
-                        icon="folder_open",
-                        on_click=self._on_browse_click
+                    ft.Text(
+                        "Click anywhere in this area to browse files",
+                        size=11,
+                        color="outline",
+                        text_align=ft.TextAlign.CENTER,
+                        style=ft.TextStyle(italic=True)
                     )
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -57,7 +60,9 @@ class FileUploader:
             border_radius=10,
             padding=20,
             bgcolor="primary_container",
-            alignment=ft.alignment.center
+            alignment=ft.alignment.center,
+            on_click=self._on_browse_click,
+            on_hover=self._on_area_hover
         )
         
         return ft.Column(
@@ -67,6 +72,16 @@ class FileUploader:
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+    
+    def _on_area_hover(self, e):
+        """Handle hover over upload area for visual feedback"""
+        if e.data == "true":  # Mouse entered
+            self._upload_area.bgcolor = "primary"
+            self._upload_area.border = ft.border.all(3, "on_primary")
+        else:  # Mouse left
+            self._upload_area.bgcolor = "primary_container"
+            self._upload_area.border = ft.border.all(2, "primary")
+        self._upload_area.update()
     
     def _on_browse_click(self, e):
         """Handle browse button click"""
